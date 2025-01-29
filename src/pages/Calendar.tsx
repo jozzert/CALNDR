@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-reac
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 interface Event {
   id: string;
@@ -29,6 +30,18 @@ interface DayEvent {
   isStart: boolean;
   isEnd: boolean;
   isMiddle: boolean;
+}
+
+interface DragResult {
+  destination?: {
+    droppableId: string;
+    index: number;
+  };
+  source: {
+    droppableId: string;
+    index: number;
+  };
+  draggableId: string;
 }
 
 export default function Calendar() {
@@ -219,6 +232,45 @@ export default function Calendar() {
     );
   };
 
+  const handleDragEnd = async (result: DragResult) => {
+    if (!result.destination) return;
+
+    const sourceDate = result.source.droppableId;
+    const destinationDate = result.destination.droppableId;
+    const eventId = result.draggableId;
+
+    const draggedEvent = events.find(e => e.id === eventId);
+    if (!draggedEvent) return;
+
+    try {
+      const sourceDateObj = new Date(sourceDate);
+      const destDateObj = new Date(destinationDate);
+      const timeDiff = destDateObj.getTime() - sourceDateObj.getTime();
+
+      const startTime = new Date(draggedEvent.start_time);
+      const endTime = new Date(draggedEvent.end_time);
+      
+      const newStartTime = new Date(startTime.getTime() + timeDiff);
+      const newEndTime = new Date(endTime.getTime() + timeDiff);
+
+      const { error } = await supabase
+        .from('events')
+        .update({
+          start_time: newStartTime.toISOString(),
+          end_time: newEndTime.toISOString(),
+        })
+        .eq('id', eventId);
+
+      if (error) throw error;
+      
+      // Refresh events after successful update
+      fetchEvents();
+    } catch (error) {
+      console.error('Error updating event:', error);
+      setError('Failed to update event');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,51 +336,98 @@ export default function Calendar() {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-px bg-gray-200">
-          {days.map((date) => {
-            const isCurrentMonth = isSameMonth(date, currentDate);
-            const isCurrentDate = isToday(date);
-            const isHovered = hoveredDate?.getTime() === date.getTime();
-            const dayEvents = getEventsForDay(date);
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid grid-cols-7 gap-px bg-gray-200">
+            {days.map((date) => {
+              const isCurrentMonth = isSameMonth(date, currentDate);
+              const isCurrentDate = isToday(date);
+              const isHovered = hoveredDate?.getTime() === date.getTime();
+              const dayEvents = getEventsForDay(date);
 
-            return (
-              <div
-                key={date.toString()}
-                className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
-                  ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                  ${isCurrentDate ? 'bg-blue-50' : ''}
-                  ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
-                  hover:bg-indigo-50 hover:shadow-inner
-                  group relative
-                `}
-                onClick={() => {
-                  setSelectedDate(date);
-                  setSelectedEvent(null);
-                  setShowEventForm(true);
-                }}
-                onMouseEnter={() => setHoveredDate(date)}
-                onMouseLeave={() => setHoveredDate(null)}
-              >
-                <div className="px-2 py-1">
-                  <span
-                    className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
-                      ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
-                      ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
-                      ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
-                      group-hover:bg-indigo-100
-                      transition-colors duration-200
-                    `}
-                  >
-                    {format(date, 'd')}
-                  </span>
-                </div>
-                <div className="px-1">
-                  {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              return (
+                <Droppable droppableId={date.toISOString()} key={date.toString()}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`min-h-32 bg-white transition-all duration-200 ease-in-out
+                        ${!isCurrentMonth ? 'bg-gray-50' : ''}
+                        ${isCurrentDate ? 'bg-blue-50' : ''}
+                        ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
+                        hover:bg-indigo-50 hover:shadow-inner
+                        group relative
+                      `}
+                      onClick={() => {
+                        setSelectedDate(date);
+                        setSelectedEvent(null);
+                        setShowEventForm(true);
+                      }}
+                      onMouseEnter={() => setHoveredDate(date)}
+                      onMouseLeave={() => setHoveredDate(null)}
+                    >
+                      <div className="px-2 py-1">
+                        <span
+                          className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
+                            ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
+                            ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
+                            ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
+                            group-hover:bg-indigo-100
+                            transition-colors duration-200
+                          `}
+                        >
+                          {format(date, 'd')}
+                        </span>
+                      </div>
+                      <div className="px-1">
+                        {dayEvents.map((dayEvent, index) => (
+                          <Draggable
+                            key={dayEvent.event.id}
+                            draggableId={dayEvent.event.id}
+                            index={index}
+                          >
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEventClick(dayEvent.event, e);
+                                }}
+                                className={`
+                                  group relative px-1 py-0.5 mb-1 text-xs cursor-pointer
+                                  hover:opacity-90 transition-opacity
+                                  ${dayEvent.isStart ? 'rounded-l-sm' : ''}
+                                  ${dayEvent.isEnd ? 'rounded-r-sm' : ''}
+                                  ${dayEvent.isMiddle ? 'border-l border-r border-white/10' : ''}
+                                  ${snapshot.isDragging ? 'shadow-lg ring-2 ring-white' : ''}
+                                `}
+                                style={{
+                                  backgroundColor: dayEvent.event.event_type.color,
+                                  ...provided.draggableProps.style,
+                                }}
+                              >
+                                <div className="flex items-center space-x-1 text-white">
+                                  {!dayEvent.event.is_all_day && dayEvent.isStart && (
+                                    <span className="font-mono whitespace-nowrap">
+                                      {format(parseISO(dayEvent.event.start_time), 'HH:mm')}
+                                    </span>
+                                  )}
+                                  <span className="truncate">{dayEvent.event.title}</span>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    </div>
+                  )}
+                </Droppable>
+              );
+            })}
+          </div>
+        </DragDropContext>
       </div>
 
       {showEventForm && (
