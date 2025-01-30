@@ -461,8 +461,8 @@ export default function Calendar() {
                   key={day.toString()}
                   onClick={(e) => handleDayClick(day, e)}
                   className={`
-                    min-h-[100px] bg-white p-2 relative flex flex-col
-                    ${!isSameMonth(day, currentDate) ? 'bg-gray-50' : ''}
+                    min-h-[100px] p-2 relative flex flex-col
+                    ${!isSameMonth(day, currentDate) ? 'bg-gray-100' : 'bg-white'}
                     ${isToday(day) ? 'bg-blue-50' : ''}
                     hover:bg-gray-50 transition-colors
                     cursor-pointer
@@ -471,8 +471,8 @@ export default function Calendar() {
                   <span
                     className={`
                       text-sm font-semibold
-                      ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''}
-                      ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}
+                      ${!isSameMonth(day, currentDate) ? 'text-gray-400' : 'text-gray-900'}
+                      ${isToday(day) ? 'text-blue-600' : ''}
                     `}
                   >
                     {format(day, 'd')}
