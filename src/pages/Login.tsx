@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function Login() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -22,11 +19,12 @@ export default function Login() {
       });
 
       if (error) throw error;
-      navigate('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+
+      // Get the return path from location state or default to '/'
+      const from = (location.state as any)?.from || '/';
+      navigate(from, { replace: true });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to sign in');
     }
   };
 
@@ -94,14 +92,8 @@ export default function Login() {
           <div>
             <button
               type="submit"
-              disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              {loading ? (
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                </span>
-              ) : null}
               Sign in
             </button>
           </div>

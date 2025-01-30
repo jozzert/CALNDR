@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import CalendarView from './pages/Calendar';
@@ -24,64 +24,35 @@ function ErrorFallback({error}: {error: Error}) {
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    console.log('=== App Initialization Start ===');
-    async function init() {
+    const checkAuth = async () => {
       try {
-        console.log('1. Checking auth session...');
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Auth error:', sessionError);
-          setError('Authentication failed');
-          return;
-        }
-
-        console.log('2. Session data:', {
-          hasSession: !!data.session,
-          userId: data.session?.user?.id
-        });
-        
-        setInitialized(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
       } catch (error) {
-        console.error('3. Initialization error:', error);
-        setError(error instanceof Error ? error.message : 'Unknown error occurred');
+        console.error('Auth error:', error);
+        setIsAuthenticated(false);
       } finally {
-        console.log('4. Setting loading to false');
         setIsLoading(false);
       }
-    }
+    };
 
-    init();
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
-
-  console.log('5. App render state:', { isLoading, error, initialized });
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-600">
-        <h1>Error</h1>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (!initialized) {
-    return (
-      <div className="p-4 text-amber-600">
-        <h1>Loading...</h1>
-        <p>Application is initializing...</p>
       </div>
     );
   }
@@ -90,9 +61,15 @@ function App() {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
+          {/* Public routes */}
+          <Route path="/login" element={
+            isAuthenticated ? <Navigate to="/" replace /> : <Login />
+          } />
+          <Route path="/register" element={
+            isAuthenticated ? <Navigate to="/" replace /> : <Register />
+          } />
+
+          {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
@@ -102,6 +79,9 @@ function App() {
               <Route path="/organization" element={<OrganizationSettings />} />
             </Route>
           </Route>
+
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </ErrorBoundary>
