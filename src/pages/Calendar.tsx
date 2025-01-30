@@ -335,8 +335,8 @@ export default function Calendar() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <div>
-        <div className="flex items-center justify-between mb-8">
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
           <div className="flex items-center space-x-4">
             <Menu as="div" className="relative">
@@ -505,86 +505,70 @@ export default function Calendar() {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="calendar-grid grid grid-cols-1 sm:grid-cols-7 gap-px bg-gray-200">
-              {/* Weekday headers - hide on mobile */}
-              <div className="hidden sm:grid sm:grid-cols-7 sm:gap-px">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="bg-gray-50 py-2">
-                    <p className="text-sm font-medium text-gray-500 text-center">
-                      {day}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Mobile view - show current week only by default */}
-              <div className="sm:hidden p-4 bg-gray-50 border-b">
-                <select 
-                  value={selectedWeek}
-                  onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          <div className="flex-1 bg-white rounded-lg shadow">
+            <div className="grid grid-cols-7 gap-px border-b border-gray-200">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div
+                  key={day}
+                  className="h-12 flex items-center justify-center bg-gray-50 px-2 py-2"
                 >
-                  {weeks.map((week, i) => (
-                    <option key={i} value={i}>
-                      Week {i + 1} ({format(week.start, 'MMM d')} - {format(week.end, 'MMM d')})
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {day}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-              {/* Calendar grid */}
-              <div className="grid grid-cols-7 gap-px bg-gray-200">
-                {days.map((date) => {
-                  const isCurrentMonth = isSameMonth(date, currentDate);
-                  const isCurrentDate = isToday(date);
-                  const isHovered = hoveredDate?.getTime() === date.getTime();
-                  const dayEvents = getEventsForDay(date);
+            <div className="grid grid-cols-7 gap-px bg-gray-200 flex-1 min-h-[600px]">
+              {days.map((day, dayIdx) => {
+                const formattedDate = format(day, 'yyyy-MM-dd');
+                const dayEvents = events.filter((event) =>
+                  isWithinInterval(parseISO(formattedDate), {
+                    start: parseISO(event.start_time),
+                    end: parseISO(event.end_time),
+                  })
+                );
 
-                  // On mobile, only show selected week
-                  if (window.innerWidth < 640 && 
-                      !isDateInWeek(date, weeks[selectedWeek].start)) {
-                    return null;
-                  }
-
-                  return (
-                    <div
-                      key={date.toString()}
-                      className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
-                        ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                        ${isCurrentDate ? 'bg-blue-50' : ''}
-                        ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
-                        hover:bg-indigo-50 hover:shadow-inner
-                        group relative
+                return (
+                  <div
+                    key={day.toString()}
+                    className={`
+                      min-h-[100px] bg-white p-2 relative flex flex-col
+                      ${!isSameMonth(day, currentDate) ? 'bg-gray-50' : ''}
+                      ${isToday(day) ? 'bg-blue-50' : ''}
+                    `}
+                  >
+                    <span
+                      className={`
+                        text-sm font-semibold
+                        ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''}
+                        ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}
                       `}
-                      onClick={() => {
-                        setSelectedDate(date);
-                        setSelectedEvent(null);
-                        setShowEventForm(true);
-                      }}
-                      onMouseEnter={() => setHoveredDate(date)}
-                      onMouseLeave={() => setHoveredDate(null)}
                     >
-                      <div className="px-2 py-1">
-                        <span
-                          className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
-                            ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
-                            ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
-                            ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
-                            group-hover:bg-indigo-100
-                            transition-colors duration-200
+                      {format(day, 'd')}
+                    </span>
+
+                    <div className="flex-1 overflow-y-auto mt-1">
+                      {dayEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className={`
+                            px-2 py-1 mb-1 rounded-sm text-sm
+                            ${event.event_type.color ? `bg-${event.event_type.color}-100 text-${event.event_type.color}-800` : 'bg-blue-100 text-blue-800'}
                           `}
                         >
-                          {format(date, 'd')}
-                        </span>
-                      </div>
-                      <div className="px-1">
-                        {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
-                      </div>
+                          <div className="font-medium truncate">{event.title}</div>
+                          {!event.is_all_day && (
+                            <div className="text-xs">
+                              {format(parseISO(event.start_time), 'h:mm a')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -607,7 +591,6 @@ export default function Calendar() {
           />
         )}
 
-        {/* Add Warning Dialog */}
         <Dialog
           open={showDuplicateWarning}
           onClose={() => setShowDuplicateWarning(false)}
