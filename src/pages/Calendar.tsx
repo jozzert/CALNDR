@@ -201,7 +201,11 @@ export default function Calendar() {
     setShowEventForm(true);
   };
 
-  const handleDayClick = (date: Date) => {
+  const handleDayClick = (date: Date, e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.event-item')) {
+      return;
+    }
+    
     setSelectedDate(date);
     setShowEventModal(true);
   };
@@ -446,14 +450,13 @@ export default function Calendar() {
               return (
                 <div
                   key={day.toString()}
-                  onClick={() => handleDayClick(day)}
+                  onClick={(e) => handleDayClick(day, e)}
                   className={`
                     min-h-[100px] bg-white p-2 relative flex flex-col
                     ${!isSameMonth(day, currentDate) ? 'bg-gray-50' : ''}
                     ${isToday(day) ? 'bg-blue-50' : ''}
                     hover:bg-gray-50 transition-colors
                     cursor-pointer
-                    group
                   `}
                 >
                   <span
@@ -461,7 +464,6 @@ export default function Calendar() {
                       text-sm font-semibold
                       ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''}
                       ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}
-                      group-hover:text-blue-600
                     `}
                   >
                     {format(day, 'd')}
