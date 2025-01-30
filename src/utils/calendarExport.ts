@@ -2,10 +2,48 @@ import { Event } from '../types';
 import { startOfYear, endOfYear } from 'date-fns';
 import { supabase } from '../lib/supabase';
 
-async function fetchYearEvents(selectedTeam: string, selectedEventType: string): Promise<Event[]> {
+interface ExportOptions {
+  selectedTeam: string;
+  selectedEventType: string;
+  newEventsOnly: boolean;
+}
+
+async function getLastExportTime(): Promise<string | null> {
+  const { data: exportRecord } = await supabase
+    .from('calendar_exports')
+    .select('last_export_time')
+    .order('last_export_time', { ascending: false })
+    .limit(1)
+    .single();
+
+  return exportRecord?.last_export_time || null;
+}
+
+async function updateLastExportTime(): Promise<void> {
+  const now = new Date().toISOString();
+  
+  const { data: existingRecord } = await supabase
+    .from('calendar_exports')
+    .select('id')
+    .limit(1)
+    .single();
+
+  if (existingRecord) {
+    await supabase
+      .from('calendar_exports')
+      .update({ last_export_time: now })
+      .eq('id', existingRecord.id);
+  } else {
+    await supabase
+      .from('calendar_exports')
+      .insert([{ last_export_time: now }]);
+  }
+}
+
+async function fetchEvents({ selectedTeam, selectedEventType, newEventsOnly }: ExportOptions): Promise<Event[]> {
   const yearStart = startOfYear(new Date());
   const yearEnd = endOfYear(new Date());
-
+  
   try {
     let query = supabase
       .from('events')
@@ -32,12 +70,19 @@ async function fetchYearEvents(selectedTeam: string, selectedEventType: string):
       query = query.eq('event_type_id', selectedEventType);
     }
 
+    if (newEventsOnly) {
+      const lastExportTime = await getLastExportTime();
+      if (lastExportTime) {
+        query = query.gt('created_at', lastExportTime);
+      }
+    }
+
     const { data, error } = await query;
 
     if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error('Error fetching year events:', error);
+    console.error('Error fetching events:', error);
     throw error;
   }
 }
@@ -73,17 +118,36 @@ export function generateICalendarFile(events: Event[]): string {
   return icsContent.join('\r\n');
 }
 
-export async function downloadCalendar(currentEvents: Event[], selectedTeam: string, selectedEventType: string): Promise<void> {
+export async function downloadCalendar(
+  currentEvents: Event[], 
+  options: ExportOptions
+): Promise<void> {
   try {
-    const yearEvents = await fetchYearEvents(selectedTeam, selectedEventType);
-    const icsContent = generateICalendarFile(yearEvents);
+    const events = await fetchEvents(options);
+    
+    if (events.length === 0) {
+      throw new Error('No new events to export');
+    }
+
+    const icsContent = generateICalendarFile(events);
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
     link.href = window.URL.createObjectURL(blob);
-    link.setAttribute('download', 'calendar-events.ics');
+    
+    // Add timestamp to filename if only exporting new events
+    const filename = options.newEventsOnly 
+      ? `calendar-events-new-${new Date().toISOString().split('T')[0]}.ics`
+      : 'calendar-events.ics';
+    
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Update last export time after successful download
+    if (options.newEventsOnly) {
+      await updateLastExportTime();
+    }
   } catch (error) {
     console.error('Error downloading calendar:', error);
     throw error;

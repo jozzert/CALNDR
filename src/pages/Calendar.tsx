@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
 import { Event } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
+import { Menu } from '@headlessui/react';
 
 interface DayEvent {
   event: Event;
@@ -214,11 +215,19 @@ export default function Calendar() {
     setCurrentDate(startOfMonth(new Date()));
   };
 
-  const handleExportCalendar = async () => {
+  const handleExportCalendar = async (newEventsOnly: boolean) => {
     try {
-      await downloadCalendar(events, selectedTeam, selectedEventType);
+      await downloadCalendar(events, {
+        selectedTeam,
+        selectedEventType,
+        newEventsOnly
+      });
     } catch (error) {
-      setError('Failed to export calendar');
+      if (error instanceof Error && error.message === 'No new events to export') {
+        setError('No new events to export');
+      } else {
+        setError('Failed to export calendar');
+      }
     }
   };
 
@@ -235,12 +244,40 @@ export default function Calendar() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
         <div className="flex items-center space-x-4">
-          <button
-            onClick={handleExportCalendar}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Export Calendar
-          </button>
+          <Menu as="div" className="relative">
+            <Menu.Button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              <Download className="h-4 w-4 mr-1.5" />
+              Export Calendar
+            </Menu.Button>
+            <Menu.Items className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+              <div className="py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleExportCalendar(false)}
+                      className={`${
+                        active ? 'bg-gray-100' : ''
+                      } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                    >
+                      Export All Events
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => handleExportCalendar(true)}
+                      className={`${
+                        active ? 'bg-gray-100' : ''
+                      } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                    >
+                      Export New Events Only
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
+            </Menu.Items>
+          </Menu>
           <button
             onClick={handleToday}
             className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
