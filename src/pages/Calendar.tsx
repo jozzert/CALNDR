@@ -17,6 +17,15 @@ interface DayEvent {
   isMiddle: boolean;
 }
 
+function ErrorFallback({error}: {error: Error}) {
+  return (
+    <div className="p-4 text-red-600">
+      <h1>Something went wrong.</h1>
+      <pre className="mt-2 text-sm">{error.message}</pre>
+    </div>
+  );
+}
+
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [events, setEvents] = useState<Event[]>([]);
@@ -306,7 +315,7 @@ export default function Calendar() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div>
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
