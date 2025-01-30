@@ -6,7 +6,7 @@ import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
 import { Event } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
-import { Menu, Dialog } from '@headlessui/react';
+import { Menu, Dialog, Tooltip } from '@headlessui/react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ErrorBoundary } from 'react-error-boundary';
 import { eventColors } from '../utils/eventColors';
@@ -45,6 +45,7 @@ export default function Calendar() {
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [pendingExportOptions, setPendingExportOptions] = useState<ExportOptions | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(0);
+  const [showEventModal, setShowEventModal] = useState(false);
 
   // Calculate calendar days
   const monthStart = startOfMonth(currentDate);
@@ -225,6 +226,11 @@ export default function Calendar() {
     setSelectedEvent(event);
     setSelectedDate(parseISO(event.start_time));
     setShowEventForm(true);
+  };
+
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    setShowEventModal(true);
   };
 
   const renderEventCell = (dayEvent: DayEvent) => {
@@ -531,10 +537,14 @@ export default function Calendar() {
                 return (
                   <div
                     key={day.toString()}
+                    onClick={() => handleDayClick(day)}
                     className={`
                       min-h-[100px] bg-white p-2 relative flex flex-col
                       ${!isSameMonth(day, currentDate) ? 'bg-gray-50' : ''}
                       ${isToday(day) ? 'bg-blue-50' : ''}
+                      hover:bg-gray-50 transition-colors
+                      cursor-pointer
+                      group
                     `}
                   >
                     <span
@@ -542,6 +552,7 @@ export default function Calendar() {
                         text-sm font-semibold
                         ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''}
                         ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}
+                        group-hover:text-blue-600
                       `}
                     >
                       {format(day, 'd')}
@@ -549,27 +560,64 @@ export default function Calendar() {
 
                     <div className="flex-1 overflow-y-auto mt-1 space-y-1">
                       {dayEvents.map((event) => (
-                        <div
-                          key={event.id}
-                          style={{
-                            backgroundColor: eventColors.getEventBackground(event.event_type.color),
-                            color: eventColors.getEventTextColor(event.event_type.color),
-                            borderLeft: `4px solid ${event.event_type.color}`
-                          }}
-                          className="px-2 py-1 rounded-sm text-sm"
-                        >
-                          <div className="font-medium truncate">{event.title}</div>
-                          {!event.is_all_day && (
-                            <div 
-                              className="text-xs opacity-75"
-                              style={{
-                                color: eventColors.getEventTextColor(event.event_type.color)
+                        <Tooltip key={event.id}>
+                          <Tooltip.Button>
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent day click
+                                handleEventClick(event, e);
                               }}
+                              style={{
+                                backgroundColor: eventColors.getEventBackground(event.event_type.color),
+                                color: eventColors.getEventTextColor(event.event_type.color),
+                                borderLeft: `4px solid ${event.event_type.color}`
+                              }}
+                              className="
+                                px-2 py-1 
+                                rounded-md 
+                                text-sm 
+                                shadow-sm
+                                hover:shadow
+                                transition-all
+                                cursor-pointer
+                                mb-1
+                                w-full
+                                hover:translate-x-0.5
+                                hover:scale-[1.01]
+                              "
                             >
-                              {format(parseISO(event.start_time), 'h:mm a')}
+                              <div className="font-medium truncate">{event.title}</div>
+                              {!event.is_all_day && (
+                                <div 
+                                  className="text-xs opacity-75"
+                                  style={{
+                                    color: eventColors.getEventTextColor(event.event_type.color)
+                                  }}
+                                >
+                                  {format(parseISO(event.start_time), 'h:mm a')}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </Tooltip.Button>
+                          <Tooltip.Panel className="z-10 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
+                            <div className="space-y-1">
+                              <div className="font-medium">{event.title}</div>
+                              {event.description && (
+                                <div className="text-sm text-gray-600">{event.description}</div>
+                              )}
+                              <div className="text-sm text-gray-500">
+                                {format(parseISO(event.start_time), 'MMM d, h:mm a')}
+                                {' - '}
+                                {format(parseISO(event.end_time), 'h:mm a')}
+                              </div>
+                              {event.location && (
+                                <div className="text-sm text-gray-500">
+                                  📍 {event.location}
+                                </div>
+                              )}
+                            </div>
+                          </Tooltip.Panel>
+                        </Tooltip>
                       ))}
                     </div>
                   </div>
@@ -637,6 +685,14 @@ export default function Calendar() {
             </Dialog.Panel>
           </div>
         </Dialog>
+
+        {showEventModal && (
+          <EventModal
+            isOpen={showEventModal}
+            onClose={() => setShowEventModal(false)}
+            initialDate={selectedDate}
+          />
+        )}
         <Toaster position="bottom-right" />
       </div>
     </ErrorBoundary>

@@ -1,15 +1,15 @@
 export const eventColors = {
   getEventBackground: (color: string) => {
-    const opacity = 0.15;
+    const opacity = 0.1;
     return `rgba(${hexToRgb(color)}, ${opacity})`;
   },
   getEventBorder: (color: string) => {
-    return `border-l-4 border-[${color}]`;
+    return color;
   },
   getEventTextColor: (color: string) => {
     const rgb = hexToRgb(color);
     const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-    return brightness > 128 ? '#1F2937' : '#FFFFFF'; // dark gray or white
+    return brightness > 128 ? '#374151' : '#F3F4F6';
   }
 };
 
