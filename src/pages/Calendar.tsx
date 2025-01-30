@@ -494,6 +494,7 @@ export default function Calendar() {
                             cursor-pointer
                             mb-1
                             w-full
+                            hover:bg-opacity-90
                           "
                           style={{
                             backgroundColor: eventColors.getEventBackground(event.event_type.color),
