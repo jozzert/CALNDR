@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths, setMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
 import { Event } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
-import { Menu } from '@headlessui/react';
+import { Menu, Dialog } from '@headlessui/react';
 
 interface DayEvent {
   event: Event;
@@ -28,6 +28,8 @@ export default function Calendar() {
   const [eventTypes, setEventTypes] = useState<{ id: string; name: string; color: string; }[]>([]);
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedEventType, setSelectedEventType] = useState('');
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [pendingExportOptions, setPendingExportOptions] = useState<ExportOptions | null>(null);
 
   const firstDayOfMonth = startOfMonth(currentDate);
   const lastDayOfMonth = endOfMonth(currentDate);
@@ -227,17 +229,36 @@ export default function Calendar() {
 
   const handleExportCalendar = async (newEventsOnly: boolean) => {
     try {
-      await downloadCalendar(events, {
+      const options = {
         selectedTeam,
         selectedEventType,
-        newEventsOnly
-      });
+        newEventsOnly,
+      };
+
+      const { requiresConfirmation } = await downloadCalendar(events, options);
+      
+      if (requiresConfirmation) {
+        setShowDuplicateWarning(true);
+        setPendingExportOptions(options);
+      }
     } catch (error) {
       if (error instanceof Error && error.message === 'No new events to export') {
         setError('No new events to export');
       } else {
         setError('Failed to export calendar');
       }
+    }
+  };
+
+  const handleConfirmedExport = async () => {
+    if (!pendingExportOptions) return;
+    
+    try {
+      await downloadCalendar(events, { ...pendingExportOptions, force: true });
+      setShowDuplicateWarning(false);
+      setPendingExportOptions(null);
+    } catch (error) {
+      setError('Failed to export calendar');
     }
   };
 
@@ -427,6 +448,48 @@ export default function Calendar() {
           }}
         />
       )}
+
+      {/* Add Warning Dialog */}
+      <Dialog
+        open={showDuplicateWarning}
+        onClose={() => setShowDuplicateWarning(false)}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="h-6 w-6 text-yellow-500" />
+              <Dialog.Title className="text-lg font-medium text-gray-900">
+                Duplicate Events Warning
+              </Dialog.Title>
+            </div>
+
+            <Dialog.Description className="mt-3 text-sm text-gray-500">
+              You have previously downloaded all events. Downloading again may create duplicates in your calendar. 
+              Consider using "Export New Events Only" instead.
+            </Dialog.Description>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                onClick={() => setShowDuplicateWarning(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                onClick={handleConfirmedExport}
+              >
+                Download Anyway
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </div>
   );
 }

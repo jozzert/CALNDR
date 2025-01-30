@@ -6,6 +6,7 @@ interface ExportOptions {
   selectedTeam: string;
   selectedEventType: string;
   newEventsOnly: boolean;
+  force?: boolean;
 }
 
 async function getLastExportTime(): Promise<string | null> {
@@ -128,11 +129,33 @@ export function generateICalendarFile(events: Event[]): string {
   return icsContent.join('\r\n');
 }
 
+async function hasDownloadedBefore(): Promise<boolean> {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return false;
+
+  const { data: exportRecord } = await supabase
+    .from('calendar_exports')
+    .select('id')
+    .eq('user_id', user.user.id)
+    .limit(1)
+    .single();
+
+  return !!exportRecord;
+}
+
 export async function downloadCalendar(
   currentEvents: Event[], 
   options: ExportOptions
-): Promise<void> {
+): Promise<{ requiresConfirmation: boolean }> {
   try {
+    // If downloading all events and not forced, check if warning is needed
+    if (!options.newEventsOnly && !options.force) {
+      const hasDownloaded = await hasDownloadedBefore();
+      if (hasDownloaded) {
+        return { requiresConfirmation: true };
+      }
+    }
+
     const events = await fetchEvents(options);
     
     if (events.length === 0) {
@@ -144,7 +167,6 @@ export async function downloadCalendar(
     const link = document.createElement('a');
     link.href = window.URL.createObjectURL(blob);
     
-    // Add timestamp to filename if only exporting new events
     const filename = options.newEventsOnly 
       ? `calendar-events-new-${new Date().toISOString().split('T')[0]}.ics`
       : 'calendar-events.ics';
@@ -155,9 +177,11 @@ export async function downloadCalendar(
     document.body.removeChild(link);
 
     // Update last export time after successful download
-    if (options.newEventsOnly) {
+    if (options.newEventsOnly || !hasDownloadedBefore()) {
       await updateLastExportTime();
     }
+
+    return { requiresConfirmation: false };
   } catch (error) {
     console.error('Error downloading calendar:', error);
     throw error;
