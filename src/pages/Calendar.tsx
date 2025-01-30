@@ -29,7 +29,7 @@ function ErrorFallback({error}: {error: Error}) {
 export default function Calendar() {
   console.log('=== Calendar Component Start ===');
 
-  const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,15 +45,17 @@ export default function Calendar() {
   const [pendingExportOptions, setPendingExportOptions] = useState<ExportOptions | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(0);
 
-  const firstDayOfMonth = startOfMonth(currentDate);
-  const lastDayOfMonth = endOfMonth(currentDate);
-  const startDate = startOfWeek(firstDayOfMonth);
-  const endDate = endOfWeek(lastDayOfMonth);
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  // Calculate calendar days
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart);
+  const calendarEnd = endOfWeek(monthEnd);
+
+  const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const weeks = eachWeekOfInterval({
-    start: startDate,
-    end: endDate
+    start: calendarStart,
+    end: calendarEnd
   }).map(weekStart => ({
     start: weekStart,
     end: endOfWeek(weekStart)
@@ -165,8 +167,8 @@ export default function Calendar() {
           event_type:event_types(id, name, color),
           team:teams(id, name)
         `)
-        .or(`start_time.gte.${startDate.toISOString()},end_time.gte.${startDate.toISOString()}`)
-        .lt('start_time', endDate.toISOString())
+        .or(`start_time.gte.${calendarStart.toISOString()},end_time.gte.${calendarStart.toISOString()}`)
+        .lt('start_time', calendarEnd.toISOString())
         .order('start_time', { ascending: true });
 
       if (selectedTeam) {
@@ -270,21 +272,13 @@ export default function Calendar() {
     );
   };
 
-  const handlePreviousMonth = () => {
-    setCurrentDate(startOfMonth(subMonths(currentDate, 1)));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(startOfMonth(addMonths(currentDate, 1)));
-  };
-
-  const handleToday = () => {
-    setCurrentDate(startOfMonth(new Date()));
-  };
+  const handlePreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+  const handleToday = () => setCurrentDate(new Date());
 
   const handleMonthSelect = (monthIndex: number) => {
     const newDate = setMonth(currentDate, monthIndex);
-    setCurrentDate(startOfMonth(newDate));
+    setCurrentDate(newDate);
   };
 
   const handleExportCalendar = async (newEventsOnly: boolean) => {
@@ -520,14 +514,18 @@ export default function Calendar() {
             </div>
 
             <div className="grid grid-cols-7 gap-px bg-gray-200 flex-1 min-h-[600px]">
-              {days.map((day, dayIdx) => {
+              {days.map((day) => {
                 const formattedDate = format(day, 'yyyy-MM-dd');
-                const dayEvents = events.filter((event) =>
-                  isWithinInterval(parseISO(formattedDate), {
-                    start: parseISO(event.start_time),
-                    end: parseISO(event.end_time),
-                  })
-                );
+                const dayEvents = events.filter(event => {
+                  const eventStart = parseISO(event.start_time);
+                  const eventEnd = parseISO(event.end_time);
+                  const currentDay = parseISO(formattedDate);
+                  
+                  return isWithinInterval(currentDay, {
+                    start: startOfDay(eventStart),
+                    end: endOfDay(eventEnd)
+                  });
+                });
 
                 return (
                   <div
@@ -548,18 +546,18 @@ export default function Calendar() {
                       {format(day, 'd')}
                     </span>
 
-                    <div className="flex-1 overflow-y-auto mt-1">
+                    <div className="flex-1 overflow-y-auto mt-1 space-y-1">
                       {dayEvents.map((event) => (
                         <div
                           key={event.id}
                           className={`
-                            px-2 py-1 mb-1 rounded-sm text-sm
+                            px-2 py-1 rounded-sm text-sm
                             ${event.event_type.color ? `bg-${event.event_type.color}-100 text-${event.event_type.color}-800` : 'bg-blue-100 text-blue-800'}
                           `}
                         >
                           <div className="font-medium truncate">{event.title}</div>
                           {!event.is_all_day && (
-                            <div className="text-xs">
+                            <div className="text-xs text-gray-600">
                               {format(parseISO(event.start_time), 'h:mm a')}
                             </div>
                           )}
@@ -637,9 +635,11 @@ export default function Calendar() {
   );
 }
 
-// Helper function to check if a date is within a week
-function isDateInWeek(date: Date, weekStart: Date): boolean {
-  const start = startOfWeek(weekStart);
-  const end = endOfWeek(weekStart);
-  return date >= start && date <= end;
+// Helper functions
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0);
+}
+
+function endOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
 }
