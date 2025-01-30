@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths, setMonth, setYear } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download, AlertTriangle, DotsVertical } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths, setMonth, setYear, eachWeekOfInterval } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download, AlertTriangle, MoreVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
@@ -43,12 +43,21 @@ export default function Calendar() {
   const [selectedEventType, setSelectedEventType] = useState('');
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [pendingExportOptions, setPendingExportOptions] = useState<ExportOptions | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState(0);
 
   const firstDayOfMonth = startOfMonth(currentDate);
   const lastDayOfMonth = endOfMonth(currentDate);
   const startDate = startOfWeek(firstDayOfMonth);
   const endDate = endOfWeek(lastDayOfMonth);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const weeks = eachWeekOfInterval({
+    start: startDate,
+    end: endDate
+  }).map(weekStart => ({
+    start: weekStart,
+    end: endOfWeek(weekStart)
+  }));
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -366,7 +375,7 @@ export default function Calendar() {
             </Menu>
             <Menu as="div" className="relative">
               <Menu.Button className="rounded-full p-2 hover:bg-gray-100">
-                <DotsVertical className="h-5 w-5 text-gray-500" />
+                <MoreVertical className="h-5 w-5 text-gray-500" />
               </Menu.Button>
               <Menu.Items className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                 <Menu.Item>
@@ -510,11 +519,11 @@ export default function Calendar() {
               </div>
               
               {/* Mobile view - show current week only by default */}
-              <div className="sm:hidden">
+              <div className="sm:hidden p-4 bg-gray-50 border-b">
                 <select 
-                  value={currentWeek} 
-                  onChange={(e) => setCurrentWeek(e.target.value)}
-                  className="block w-full rounded-md border-gray-300"
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 >
                   {weeks.map((week, i) => (
                     <option key={i} value={i}>
@@ -523,51 +532,59 @@ export default function Calendar() {
                   ))}
                 </select>
               </div>
-            </div>
-            <div className="grid grid-cols-7 gap-px bg-gray-200">
-              {days.map((date) => {
-                const isCurrentMonth = isSameMonth(date, currentDate);
-                const isCurrentDate = isToday(date);
-                const isHovered = hoveredDate?.getTime() === date.getTime();
-                const dayEvents = getEventsForDay(date);
 
-                return (
-                  <div
-                    key={date.toString()}
-                    className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
-                      ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                      ${isCurrentDate ? 'bg-blue-50' : ''}
-                      ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
-                      hover:bg-indigo-50 hover:shadow-inner
-                      group relative
-                    `}
-                    onClick={() => {
-                      setSelectedDate(date);
-                      setSelectedEvent(null);
-                      setShowEventForm(true);
-                    }}
-                    onMouseEnter={() => setHoveredDate(date)}
-                    onMouseLeave={() => setHoveredDate(null)}
-                  >
-                    <div className="px-2 py-1">
-                      <span
-                        className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
-                          ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
-                          ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
-                          ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
-                          group-hover:bg-indigo-100
-                          transition-colors duration-200
-                        `}
-                      >
-                        {format(date, 'd')}
-                      </span>
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-px bg-gray-200">
+                {days.map((date) => {
+                  const isCurrentMonth = isSameMonth(date, currentDate);
+                  const isCurrentDate = isToday(date);
+                  const isHovered = hoveredDate?.getTime() === date.getTime();
+                  const dayEvents = getEventsForDay(date);
+
+                  // On mobile, only show selected week
+                  if (window.innerWidth < 640 && 
+                      !isDateInWeek(date, weeks[selectedWeek].start)) {
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      key={date.toString()}
+                      className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
+                        ${!isCurrentMonth ? 'bg-gray-50' : ''}
+                        ${isCurrentDate ? 'bg-blue-50' : ''}
+                        ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
+                        hover:bg-indigo-50 hover:shadow-inner
+                        group relative
+                      `}
+                      onClick={() => {
+                        setSelectedDate(date);
+                        setSelectedEvent(null);
+                        setShowEventForm(true);
+                      }}
+                      onMouseEnter={() => setHoveredDate(date)}
+                      onMouseLeave={() => setHoveredDate(null)}
+                    >
+                      <div className="px-2 py-1">
+                        <span
+                          className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
+                            ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
+                            ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
+                            ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
+                            group-hover:bg-indigo-100
+                            transition-colors duration-200
+                          `}
+                        >
+                          {format(date, 'd')}
+                        </span>
+                      </div>
+                      <div className="px-1">
+                        {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
+                      </div>
                     </div>
-                    <div className="px-1">
-                      {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -635,4 +652,11 @@ export default function Calendar() {
       </div>
     </ErrorBoundary>
   );
+}
+
+// Helper function to check if a date is within a week
+function isDateInWeek(date: Date, weekStart: Date): boolean {
+  const start = startOfWeek(weekStart);
+  const end = endOfWeek(weekStart);
+  return date >= start && date <= end;
 }
