@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths, setMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download, AlertTriangle } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths, setMonth, setYear } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download, AlertTriangle, DotsVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
 import { Event } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
 import { Menu, Dialog } from '@headlessui/react';
+import { Toaster, toast } from 'react-hot-toast';
 
 interface DayEvent {
   event: Event;
@@ -42,11 +43,28 @@ export default function Calendar() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 1 + i);
+
   useEffect(() => {
     Promise.all([fetchTeams(), fetchEventTypes()]).then(() => {
       fetchEvents();
     });
   }, [currentDate, selectedTeam, selectedEventType]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        handlePreviousMonth();
+      } else if (e.key === 'ArrowRight') {
+        handleNextMonth();
+      } else if (e.key === 'Home') {
+        handleToday();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   async function fetchTeams() {
     try {
@@ -184,28 +202,25 @@ export default function Calendar() {
         key={`${event.id}-${isStart ? 'start' : isEnd ? 'end' : 'middle'}`}
         onClick={(e) => handleEventClick(event, e)}
         className={`
-          group relative px-1 py-0.5 mb-1 text-xs cursor-pointer
-          hover:opacity-90 transition-opacity ${roundedClasses}
+          group relative px-2 py-1 text-sm rounded-md truncate
+          ${isStart ? 'ml-1' : '-ml-1'}
+          ${isEnd ? 'mr-1' : '-mr-1'}
+          ${getEventTypeColor(event.event_type.color)}
+          hover:ring-2 hover:ring-offset-1 hover:ring-indigo-500
+          transition-all duration-150
         `}
-        style={{ backgroundColor: event.event_type.color }}
       >
-        <div className="flex items-center space-x-1 text-white">
-          {timeDisplay && (
-            <span className="font-mono whitespace-nowrap">{timeDisplay}</span>
-          )}
-          <span className="truncate">{event.title}</span>
+        <div className="invisible group-hover:visible absolute z-10 w-64 p-2 mt-1 
+          text-sm bg-white rounded-lg shadow-lg border border-gray-200
+          -translate-y-full left-0">
+          <p className="font-semibold">{event.title}</p>
+          <p className="text-gray-600">{event.description}</p>
+          <p className="text-gray-500 text-xs mt-1">
+            {format(eventStart, 'h:mm a')} - 
+            {format(eventEnd, 'h:mm a')}
+          </p>
         </div>
-        <div className="absolute hidden group-hover:block z-10 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg -top-1 left-full ml-2">
-          <div className="font-semibold">{event.title}</div>
-          {!event.is_all_day && (
-            <div className="mt-1">
-              {format(eventStart, 'HH:mm')} - {format(eventEnd, 'HH:mm')}
-            </div>
-          )}
-          {event.location && (
-            <div className="mt-1 text-gray-300">{event.location}</div>
-          )}
-        </div>
+        {event.title}
       </div>
     );
   };
@@ -241,11 +256,14 @@ export default function Calendar() {
         setShowDuplicateWarning(true);
         setPendingExportOptions(options);
       }
+      toast.success(
+        newEventsOnly ? 'New events exported successfully' : 'All events exported successfully'
+      );
     } catch (error) {
       if (error instanceof Error && error.message === 'No new events to export') {
-        setError('No new events to export');
+        toast.info('No new events to export');
       } else {
-        setError('Failed to export calendar');
+        toast.error('Failed to export calendar');
       }
     }
   };
@@ -309,6 +327,37 @@ export default function Calendar() {
               </div>
             </Menu.Items>
           </Menu>
+          <Menu as="div" className="relative">
+            <Menu.Button className="rounded-full p-2 hover:bg-gray-100">
+              <DotsVertical className="h-5 w-5 text-gray-500" />
+            </Menu.Button>
+            <Menu.Items className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={handleToday}
+                    className={`${
+                      active ? 'bg-gray-100' : ''
+                    } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                  >
+                    Go to Today
+                  </button>
+                )}
+              </Menu.Item>
+              <Menu.Item>
+                {({ active }) => (
+                  <button
+                    onClick={() => setShowEventForm(true)}
+                    className={`${
+                      active ? 'bg-gray-100' : ''
+                    } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                  >
+                    Create Event
+                  </button>
+                )}
+              </Menu.Item>
+            </Menu.Items>
+          </Menu>
           <button
             onClick={handleToday}
             className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -329,23 +378,39 @@ export default function Calendar() {
                 <span>{format(currentDate, 'MMMM yyyy')}</span>
                 <ChevronRight className="h-4 w-4 rotate-90" />
               </Menu.Button>
-              <Menu.Items className="absolute z-10 mt-1 max-h-60 w-36 overflow-auto rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                {months.map((month, index) => (
-                  <Menu.Item key={month}>
-                    {({ active }) => (
-                      <button
-                        onClick={() => handleMonthSelect(index)}
-                        className={`${
-                          active ? 'bg-gray-100' : ''
-                        } ${
-                          format(currentDate, 'MMMM') === month ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
-                        } block w-full px-4 py-2 text-left text-sm`}
-                      >
-                        {month}
-                      </button>
-                    )}
-                  </Menu.Item>
-                ))}
+              <Menu.Items className="absolute z-10 mt-1 w-48 overflow-auto rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="px-3 py-2 border-b">
+                  <select 
+                    value={format(currentDate, 'yyyy')}
+                    onChange={(e) => {
+                      const newDate = setYear(currentDate, parseInt(e.target.value));
+                      setCurrentDate(startOfMonth(newDate));
+                    }}
+                    className="w-full rounded-md border-gray-300"
+                  >
+                    {years.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-1 p-2">
+                  {months.map((month, index) => (
+                    <Menu.Item key={month}>
+                      {({ active }) => (
+                        <button
+                          onClick={() => handleMonthSelect(index)}
+                          className={`${
+                            active ? 'bg-gray-100' : ''
+                          } ${
+                            format(currentDate, 'MMMM') === month ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
+                          } px-2 py-1 text-sm rounded-md w-full text-center`}
+                        >
+                          {month.slice(0, 3)}
+                        </button>
+                      )}
+                    </Menu.Item>
+                  ))}
+                </div>
               </Menu.Items>
             </Menu>
 
@@ -376,60 +441,99 @@ export default function Calendar() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="grid grid-cols-7 gap-px border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="px-4 py-2">
-              {day}
-            </div>
+      {loading ? (
+        <div className="animate-pulse">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-4 bg-gray-200 rounded my-2 mx-1"></div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-px bg-gray-200">
-          {days.map((date) => {
-            const isCurrentMonth = isSameMonth(date, currentDate);
-            const isCurrentDate = isToday(date);
-            const isHovered = hoveredDate?.getTime() === date.getTime();
-            const dayEvents = getEventsForDay(date);
-
-            return (
-              <div
-                key={date.toString()}
-                className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
-                  ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                  ${isCurrentDate ? 'bg-blue-50' : ''}
-                  ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
-                  hover:bg-indigo-50 hover:shadow-inner
-                  group relative
-                `}
-                onClick={() => {
-                  setSelectedDate(date);
-                  setSelectedEvent(null);
-                  setShowEventForm(true);
-                }}
-                onMouseEnter={() => setHoveredDate(date)}
-                onMouseLeave={() => setHoveredDate(null)}
-              >
-                <div className="px-2 py-1">
-                  <span
-                    className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
-                      ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
-                      ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
-                      ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
-                      group-hover:bg-indigo-100
-                      transition-colors duration-200
-                    `}
-                  >
-                    {format(date, 'd')}
-                  </span>
-                </div>
-                <div className="px-1">
-                  {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
-                </div>
-              </div>
-            );
-          })}
+      ) : events.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+          <p>No events found for this period</p>
+          <button
+            onClick={() => setShowEventForm(true)}
+            className="mt-2 text-indigo-600 hover:text-indigo-500"
+          >
+            Create your first event
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="calendar-grid grid grid-cols-1 sm:grid-cols-7 gap-px bg-gray-200">
+            {/* Weekday headers - hide on mobile */}
+            <div className="hidden sm:grid sm:grid-cols-7 sm:gap-px">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="bg-gray-50 py-2">
+                  <p className="text-sm font-medium text-gray-500 text-center">
+                    {day}
+                  </p>
+                </div>
+              ))}
+            </div>
+            
+            {/* Mobile view - show current week only by default */}
+            <div className="sm:hidden">
+              <select 
+                value={currentWeek} 
+                onChange={(e) => setCurrentWeek(e.target.value)}
+                className="block w-full rounded-md border-gray-300"
+              >
+                {weeks.map((week, i) => (
+                  <option key={i} value={i}>
+                    Week {i + 1} ({format(week.start, 'MMM d')} - {format(week.end, 'MMM d')})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-px bg-gray-200">
+            {days.map((date) => {
+              const isCurrentMonth = isSameMonth(date, currentDate);
+              const isCurrentDate = isToday(date);
+              const isHovered = hoveredDate?.getTime() === date.getTime();
+              const dayEvents = getEventsForDay(date);
+
+              return (
+                <div
+                  key={date.toString()}
+                  className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
+                    ${!isCurrentMonth ? 'bg-gray-50' : ''}
+                    ${isCurrentDate ? 'bg-blue-50' : ''}
+                    ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
+                    hover:bg-indigo-50 hover:shadow-inner
+                    group relative
+                  `}
+                  onClick={() => {
+                    setSelectedDate(date);
+                    setSelectedEvent(null);
+                    setShowEventForm(true);
+                  }}
+                  onMouseEnter={() => setHoveredDate(date)}
+                  onMouseLeave={() => setHoveredDate(null)}
+                >
+                  <div className="px-2 py-1">
+                    <span
+                      className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
+                        ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
+                        ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
+                        ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
+                        group-hover:bg-indigo-100
+                        transition-colors duration-200
+                      `}
+                    >
+                      {format(date, 'd')}
+                    </span>
+                  </div>
+                  <div className="px-1">
+                    {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {showEventForm && (
         <EventForm
@@ -490,6 +594,7 @@ export default function Calendar() {
           </Dialog.Panel>
         </div>
       </Dialog>
+      <Toaster position="bottom-right" />
     </div>
   );
 }
