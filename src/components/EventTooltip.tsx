@@ -8,23 +8,34 @@ interface EventTooltipProps {
 }
 
 export function EventTooltip({ event, children }: EventTooltipProps) {
-  return (
-    <div className="relative">
-      <div className="hover:relative">
-        {children}
+  const [showTooltip, setShowTooltip] = useState(false);
 
+  return (
+    <div 
+      className="relative"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {children}
+
+      {showTooltip && (
         <div 
           className="
-            hidden hover:block
-            absolute z-50 w-64 p-4 bg-white rounded-lg shadow-lg border border-gray-200 text-sm
-            top-0 left-1/2 -translate-x-1/2 -translate-y-full mt-1
+            fixed z-[100] w-64 p-4 bg-white rounded-lg shadow-xl border border-gray-200 text-sm
           "
+          style={{
+            left: '50%',
+            transform: 'translateX(-50%)',
+            top: 'auto',
+            bottom: '100%',
+            marginBottom: '8px'
+          }}
         >
           <div className="space-y-2">
             <div className="font-medium text-gray-900">{event.title}</div>
             
             {event.description && (
-              <div className="text-gray-600">{event.description}</div>
+              <div className="text-gray-600 whitespace-pre-wrap">{event.description}</div>
             )}
             
             <div className="text-gray-500">
@@ -70,7 +81,7 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
             }}
           />
         </div>
-      </div>
+      )}
     </div>
   );
 } 
