@@ -503,20 +503,17 @@ export default function Calendar() {
                           }}
                         >
                           <div className="font-medium truncate">
-                            <span className="mr-1">{event.title}</span>
-                            <span className="text-xs opacity-75">• {event.event_type.name}</span>
+                            {event.title}
                           </div>
 
-                          {!event.is_all_day && (
-                            <div 
-                              className="text-xs opacity-75"
-                              style={{
-                                color: event.event_type.color
-                              }}
-                            >
-                              {format(parseISO(event.start_time), 'h:mm a')}
-                            </div>
-                          )}
+                          <div className="flex items-center justify-between text-xs opacity-75">
+                            <div>{event.event_type.name}</div>
+                            {!event.is_all_day && (
+                              <div>
+                                {format(parseISO(event.start_time), 'h:mm a')}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </EventTooltip>
                     ))}
