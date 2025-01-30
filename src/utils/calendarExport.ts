@@ -9,9 +9,13 @@ interface ExportOptions {
 }
 
 async function getLastExportTime(): Promise<string | null> {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return null;
+
   const { data: exportRecord } = await supabase
     .from('calendar_exports')
     .select('last_export_time')
+    .eq('user_id', user.user.id)
     .order('last_export_time', { ascending: false })
     .limit(1)
     .single();
@@ -20,12 +24,15 @@ async function getLastExportTime(): Promise<string | null> {
 }
 
 async function updateLastExportTime(): Promise<void> {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) return;
+
   const now = new Date().toISOString();
   
   const { data: existingRecord } = await supabase
     .from('calendar_exports')
     .select('id')
-    .limit(1)
+    .eq('user_id', user.user.id)
     .single();
 
   if (existingRecord) {
@@ -36,7 +43,10 @@ async function updateLastExportTime(): Promise<void> {
   } else {
     await supabase
       .from('calendar_exports')
-      .insert([{ last_export_time: now }]);
+      .insert([{ 
+        last_export_time: now,
+        user_id: user.user.id
+      }]);
   }
 }
 
@@ -73,7 +83,7 @@ async function fetchEvents({ selectedTeam, selectedEventType, newEventsOnly }: E
     if (newEventsOnly) {
       const lastExportTime = await getLastExportTime();
       if (lastExportTime) {
-        query = query.gt('created_at', lastExportTime);
+        query = query.or(`updated_at.gt.${lastExportTime},created_at.gt.${lastExportTime}`);
       }
     }
 
