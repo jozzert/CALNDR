@@ -27,6 +27,8 @@ function ErrorFallback({error}: {error: Error}) {
 }
 
 export default function Calendar() {
+  console.log('Calendar component rendering...');
+
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,13 @@ export default function Calendar() {
   ];
 
   const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 1 + i);
+
+  useEffect(() => {
+    console.log('Calendar mounting...');
+    return () => {
+      console.log('Calendar unmounting...');
+    };
+  }, []);
 
   useEffect(() => {
     console.log('Fetching initial data...');

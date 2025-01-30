@@ -10,20 +10,47 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import { supabase } from './lib/supabase';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({error}: {error: Error}) {
+  return (
+    <div className="p-4 text-red-600">
+      <h1>Something went wrong</h1>
+      <pre className="mt-2 text-sm">{error.message}</pre>
+      <pre className="mt-2 text-xs">{error.stack}</pre>
+    </div>
+  );
+}
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Auth error:', error);
-        setError('Authentication failed');
+    console.log('App mounting...');
+    async function init() {
+      try {
+        console.log('Checking auth session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Auth error:', sessionError);
+          setError('Authentication failed');
+          return;
+        }
+
+        console.log('Session status:', session ? 'authenticated' : 'no session');
+        setInitialized(true);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setError(error instanceof Error ? error.message : 'Unknown error occurred');
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
+    }
+
+    init();
   }, []);
 
   if (isLoading) {
@@ -43,23 +70,34 @@ function App() {
     );
   }
 
+  if (!initialized) {
+    return (
+      <div className="p-4 text-amber-600">
+        <h1>Loading...</h1>
+        <p>Application is initializing...</p>
+      </div>
+    );
+  }
+
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/calendar" element={<CalendarView />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/teams" element={<Teams />} />
-            <Route path="/organization" element={<OrganizationSettings />} />
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/calendar" element={<CalendarView />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/teams" element={<Teams />} />
+              <Route path="/organization" element={<OrganizationSettings />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
