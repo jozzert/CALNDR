@@ -22,6 +22,14 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
         >
           <div className="font-semibold text-base">{event.title}</div>
         </div>
+
+        {/* Event Type */}
+        <div className="flex items-center text-gray-700">
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+          </svg>
+          <span>{event.event_type.name}</span>
+        </div>
         
         {/* Time */}
         <div className="flex items-center text-gray-700">
@@ -62,7 +70,7 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
 
         {/* Description */}
         {event.description && (
-          <div className="text-gray-600 border-t pt-2 mt-2 text-sm">
+          <div className="text-gray-600 border-t pt-2 mt-2 text-sm whitespace-pre-wrap">
             {event.description}
           </div>
         )}
@@ -79,6 +87,7 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
       interactive={true}
       className="shadow-xl"
       theme="light"
+      maxWidth={400}
     >
       <div>{children}</div>
     </Tippy>
