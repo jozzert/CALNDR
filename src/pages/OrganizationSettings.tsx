@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import EventTypeManager from '../components/EventTypeManager';
 import { EventTypes } from '../components/EventTypes';
 import { Toaster } from 'react-hot-toast';
 
@@ -137,8 +136,96 @@ export default function OrganizationSettings() {
           </p>
         </div>
 
+        {/* Organization Details Section */}
+        <div className="bg-white shadow rounded-lg">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {error && (
+              <div className="rounded-md bg-red-50 p-4">
+                <div className="text-sm text-red-700">{error}</div>
+              </div>
+            )}
+
+            <div className="space-y-6">
+              {/* Logo Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Logo</label>
+                <div className="mt-1 flex items-center">
+                  {organization.logo_url ? (
+                    <img
+                      src={organization.logo_url}
+                      alt="Organization logo"
+                      className="h-12 w-12 rounded-full"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                      <Settings className="h-6 w-6 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="ml-4">
+                    <div className="relative bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm flex items-center cursor-pointer hover:bg-gray-50">
+                      <label htmlFor="logo-upload" className="relative text-sm font-medium text-indigo-600">
+                        <span>Change</span>
+                        <input
+                          id="logo-upload"
+                          name="logo-upload"
+                          type="file"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={handleLogoUpload}
+                          accept="image/*"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Organization Name */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  Organization Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  value={organization.name}
+                  onChange={(e) => setOrganization(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  id="location"
+                  value={organization.location || ''}
+                  onChange={(e) => setOrganization(prev => prev ? { ...prev, location: e.target.value } : null)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Event Categories Section */}
         <div className="bg-white shadow rounded-lg">
           <div className="p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Event Categories</h2>
             <EventTypes />
           </div>
         </div>

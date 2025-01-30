@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -20,6 +20,14 @@ export function EventCategoryModal({ isOpen, onClose, category, onSuccess }: Eve
   const [name, setName] = useState(category?.name || '');
   const [color, setColor] = useState(category?.color || '#000000');
   const [loading, setLoading] = useState(false);
+
+  // Reset form when category changes
+  useEffect(() => {
+    if (category) {
+      setName(category.name);
+      setColor(category.color);
+    }
+  }, [category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
