@@ -1,19 +1,21 @@
-import { Fragment } from 'react';
+import React from 'react';
 import { Dialog, Transition } from '@headlessui/react';
+import EventForm from './EventForm';
 import { format } from 'date-fns';
 
 interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialDate: Date | null;
+  selectedDate: Date | null;
+  onSuccess?: () => void;
 }
 
-export function EventModal({ isOpen, onClose, initialDate }: EventModalProps) {
+export function EventModal({ isOpen, onClose, selectedDate, onSuccess }: EventModalProps) {
   return (
-    <Transition appear show={isOpen} as={Fragment}>
+    <Transition appear show={isOpen} as={React.Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
-          as={Fragment}
+          as={React.Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
           enterTo="opacity-100"
@@ -21,13 +23,13 @@ export function EventModal({ isOpen, onClose, initialDate }: EventModalProps) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-black/30" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <Transition.Child
-              as={Fragment}
+              as={React.Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -35,30 +37,25 @@ export function EventModal({ isOpen, onClose, initialDate }: EventModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900"
-                >
-                  Create Event
-                  {initialDate && (
-                    <span className="text-sm text-gray-500 ml-2">
-                      {format(initialDate, 'MMMM d, yyyy')}
-                    </span>
-                  )}
-                </Dialog.Title>
-                
-                {/* Add your event creation form here */}
-                
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                    onClick={onClose}
-                  >
-                    Close
-                  </button>
+              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                  <Dialog.Title className="text-lg font-medium text-gray-900">
+                    Create Event
+                    {selectedDate && (
+                      <span className="text-sm text-gray-500 ml-2">
+                        {format(selectedDate, 'MMMM d, yyyy')}
+                      </span>
+                    )}
+                  </Dialog.Title>
                 </div>
+                <EventForm
+                  selectedDate={selectedDate || new Date()}
+                  onClose={onClose}
+                  onSuccess={() => {
+                    onSuccess?.();
+                    onClose();
+                  }}
+                />
               </Dialog.Panel>
             </Transition.Child>
           </div>
@@ -66,4 +63,4 @@ export function EventModal({ isOpen, onClose, initialDate }: EventModalProps) {
       </Dialog>
     </Transition>
   );
-} 
+}

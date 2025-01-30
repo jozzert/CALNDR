@@ -3,10 +3,12 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfW
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download, AlertTriangle, MoreVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
+import { EventModal } from '../components/EventModal';
 import EventFilters from '../components/EventFilters';
 import { Event } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
-import { Menu, Dialog, Tooltip } from '@headlessui/react';
+import { Menu, Dialog } from '@headlessui/react';
+import { Tooltip } from '../components/Tooltip';
 import { Toaster, toast } from 'react-hot-toast';
 import { ErrorBoundary } from 'react-error-boundary';
 import { eventColors } from '../utils/eventColors';
@@ -47,7 +49,6 @@ export default function Calendar() {
   const [selectedWeek, setSelectedWeek] = useState(0);
   const [showEventModal, setShowEventModal] = useState(false);
 
-  // Calculate calendar days
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const calendarStart = startOfWeek(monthStart);
@@ -193,34 +194,6 @@ export default function Calendar() {
     }
   }
 
-  const getEventsForDay = (date: Date): DayEvent[] => {
-    return events
-      .filter(event => {
-        const eventStart = parseISO(event.start_time);
-        const eventEnd = parseISO(event.end_time);
-        return isWithinInterval(date, { start: eventStart, end: eventEnd }) ||
-               isSameDay(date, eventStart) ||
-               isSameDay(date, eventEnd);
-      })
-      .map(event => {
-        const eventStart = parseISO(event.start_time);
-        const eventEnd = parseISO(event.end_time);
-        return {
-          event,
-          isStart: isSameDay(date, eventStart),
-          isEnd: isSameDay(date, eventEnd),
-          isMiddle: !isSameDay(date, eventStart) && !isSameDay(date, eventEnd) &&
-                   isWithinInterval(date, { start: eventStart, end: eventEnd }),
-        };
-      })
-      .sort((a, b) => {
-        if (a.event.is_all_day !== b.event.is_all_day) {
-          return a.event.is_all_day ? -1 : 1;
-        }
-        return new Date(a.event.start_time).getTime() - new Date(b.event.start_time).getTime();
-      });
-  };
-
   const handleEventClick = (event: Event, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedEvent(event);
@@ -231,52 +204,6 @@ export default function Calendar() {
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
     setShowEventModal(true);
-  };
-
-  const renderEventCell = (dayEvent: DayEvent) => {
-    const { event, isStart, isEnd, isMiddle } = dayEvent;
-    const eventStart = parseISO(event.start_time);
-    const eventEnd = parseISO(event.end_time);
-
-    let timeDisplay = '';
-    if (!event.is_all_day) {
-      if (isStart) {
-        timeDisplay = format(eventStart, 'HH:mm');
-      }
-    }
-
-    const roundedClasses = [
-      isStart ? 'rounded-l-sm' : '',
-      isEnd ? 'rounded-r-sm' : '',
-      isMiddle ? 'border-l border-r border-white/10' : '',
-    ].join(' ');
-
-    return (
-      <div
-        key={`${event.id}-${isStart ? 'start' : isEnd ? 'end' : 'middle'}`}
-        onClick={(e) => handleEventClick(event, e)}
-        className={`
-          group relative px-2 py-1 text-sm rounded-md truncate
-          ${isStart ? 'ml-1' : '-ml-1'}
-          ${isEnd ? 'mr-1' : '-mr-1'}
-          ${getEventTypeColor(event.event_type.color)}
-          hover:ring-2 hover:ring-offset-1 hover:ring-indigo-500
-          transition-all duration-150
-        `}
-      >
-        <div className="invisible group-hover:visible absolute z-10 w-64 p-2 mt-1 
-          text-sm bg-white rounded-lg shadow-lg border border-gray-200
-          -translate-y-full left-0">
-          <p className="font-semibold">{event.title}</p>
-          <p className="text-gray-600">{event.description}</p>
-          <p className="text-gray-500 text-xs mt-1">
-            {format(eventStart, 'h:mm a')} - 
-            {format(eventEnd, 'h:mm a')}
-          </p>
-        </div>
-        {event.title}
-      </div>
-    );
   };
 
   const handlePreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
@@ -488,119 +415,102 @@ export default function Calendar() {
           </div>
         )}
 
-        {loading ? (
-          <div className="animate-pulse">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-4 bg-gray-200 rounded my-2 mx-1"></div>
+        <div className="flex-1 bg-white rounded-lg shadow">
+          <div className="grid grid-cols-7 gap-px border-b border-gray-200">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div
+                key={day}
+                className="h-12 flex items-center justify-center bg-gray-50 px-2 py-2"
+              >
+                <span className="text-sm font-semibold text-gray-900">
+                  {day}
+                </span>
+              </div>
             ))}
           </div>
-        ) : events.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p>No events found for this period</p>
-            <button
-              onClick={() => setShowEventForm(true)}
-              className="mt-2 text-indigo-600 hover:text-indigo-500"
-            >
-              Create your first event
-            </button>
-          </div>
-        ) : (
-          <div className="flex-1 bg-white rounded-lg shadow">
-            <div className="grid grid-cols-7 gap-px border-b border-gray-200">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                <div
-                  key={day}
-                  className="h-12 flex items-center justify-center bg-gray-50 px-2 py-2"
-                >
-                  <span className="text-sm font-semibold text-gray-900">
-                    {day}
-                  </span>
-                </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-7 gap-px bg-gray-200 flex-1 min-h-[600px]">
-              {days.map((day) => {
-                const formattedDate = format(day, 'yyyy-MM-dd');
-                const dayEvents = events.filter(event => {
-                  const eventStart = parseISO(event.start_time);
-                  const eventEnd = parseISO(event.end_time);
-                  const currentDay = parseISO(formattedDate);
-                  
-                  return isWithinInterval(currentDay, {
-                    start: startOfDay(eventStart),
-                    end: endOfDay(eventEnd)
-                  });
+          <div className="grid grid-cols-7 gap-px bg-gray-200 flex-1 min-h-[600px]">
+            {days.map((day) => {
+              const formattedDate = format(day, 'yyyy-MM-dd');
+              const dayEvents = events.filter(event => {
+                const eventStart = parseISO(event.start_time);
+                const eventEnd = parseISO(event.end_time);
+                const currentDay = parseISO(formattedDate);
+                
+                return isWithinInterval(currentDay, {
+                  start: startOfDay(eventStart),
+                  end: endOfDay(eventEnd)
                 });
+              });
 
-                return (
-                  <div
-                    key={day.toString()}
-                    onClick={() => handleDayClick(day)}
+              return (
+                <div
+                  key={day.toString()}
+                  onClick={() => handleDayClick(day)}
+                  className={`
+                    min-h-[100px] bg-white p-2 relative flex flex-col
+                    ${!isSameMonth(day, currentDate) ? 'bg-gray-50' : ''}
+                    ${isToday(day) ? 'bg-blue-50' : ''}
+                    hover:bg-gray-50 transition-colors
+                    cursor-pointer
+                    group
+                  `}
+                >
+                  <span
                     className={`
-                      min-h-[100px] bg-white p-2 relative flex flex-col
-                      ${!isSameMonth(day, currentDate) ? 'bg-gray-50' : ''}
-                      ${isToday(day) ? 'bg-blue-50' : ''}
-                      hover:bg-gray-50 transition-colors
-                      cursor-pointer
-                      group
+                      text-sm font-semibold
+                      ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''}
+                      ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}
+                      group-hover:text-blue-600
                     `}
                   >
-                    <span
-                      className={`
-                        text-sm font-semibold
-                        ${!isSameMonth(day, currentDate) ? 'text-gray-400' : ''}
-                        ${isToday(day) ? 'text-blue-600' : 'text-gray-900'}
-                        group-hover:text-blue-600
-                      `}
-                    >
-                      {format(day, 'd')}
-                    </span>
+                    {format(day, 'd')}
+                  </span>
 
-                    <div className="flex-1 overflow-y-auto mt-1 space-y-1">
-                      {dayEvents.map((event) => (
-                        <Tooltip key={event.id}>
-                          <Tooltip.Button>
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent day click
-                                handleEventClick(event, e);
-                              }}
-                              style={{
-                                backgroundColor: eventColors.getEventBackground(event.event_type.color),
-                                color: eventColors.getEventTextColor(event.event_type.color),
-                                borderLeft: `4px solid ${event.event_type.color}`
-                              }}
-                              className="
-                                px-2 py-1 
-                                rounded-md 
-                                text-sm 
-                                shadow-sm
-                                hover:shadow
-                                transition-all
-                                cursor-pointer
-                                mb-1
-                                w-full
-                                hover:translate-x-0.5
-                                hover:scale-[1.01]
-                              "
-                            >
-                              <div className="font-medium truncate">{event.title}</div>
-                              {!event.is_all_day && (
-                                <div 
-                                  className="text-xs opacity-75"
-                                  style={{
-                                    color: eventColors.getEventTextColor(event.event_type.color)
-                                  }}
-                                >
-                                  {format(parseISO(event.start_time), 'h:mm a')}
-                                </div>
-                              )}
-                            </div>
-                          </Tooltip.Button>
-                          <Tooltip.Panel className="z-10 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
-                            <div className="space-y-1">
+                  <div className="flex-1 overflow-y-auto mt-1 space-y-1">
+                    {dayEvents.map((event) => (
+                      <Tooltip key={event.id}>
+                        <Tooltip.Button>
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEventClick(event, e);
+                            }}
+                            style={{
+                              backgroundColor: eventColors.getEventBackground(event.event_type.color),
+                              color: eventColors.getEventTextColor(event.event_type.color),
+                              borderLeft: `4px solid ${event.event_type.color}`
+                            }}
+                            className="
+                              px-2 py-1 
+                              rounded-md 
+                              text-sm 
+                              shadow-sm
+                              hover:shadow
+                              transition-all
+                              cursor-pointer
+                              mb-1
+                              w-full
+                              hover:translate-x-0.5
+                              hover:scale-[1.01]
+                            "
+                          >
+                            <div className="font-medium truncate">{event.title}</div>
+                            {!event.is_all_day && (
+                              <div 
+                                className="text-xs opacity-75"
+                                style={{
+                                  color: eventColors.getEventTextColor(event.event_type.color)
+                                }}
+                              >
+                                {format(parseISO(event.start_time), 'h:mm a')}
+                              </div>
+                            )}
+                          </div>
+                        </Tooltip.Button>
+                        <Tooltip.Panel>
+                          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[200px]">
+                            <div className="space-y-2">
                               <div className="font-medium">{event.title}</div>
                               {event.description && (
                                 <div className="text-sm text-gray-600">{event.description}</div>
@@ -611,21 +521,21 @@ export default function Calendar() {
                                 {format(parseISO(event.end_time), 'h:mm a')}
                               </div>
                               {event.location && (
-                                <div className="text-sm text-gray-500">
-                                  📍 {event.location}
+                                <div className="text-sm text-gray-500 flex items-center">
+                                  <span className="mr-1">📍</span> {event.location}
                                 </div>
                               )}
                             </div>
-                          </Tooltip.Panel>
-                        </Tooltip>
-                      ))}
-                    </div>
+                          </div>
+                        </Tooltip.Panel>
+                      </Tooltip>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
         {showEventForm && (
           <EventForm
@@ -689,8 +599,16 @@ export default function Calendar() {
         {showEventModal && (
           <EventModal
             isOpen={showEventModal}
-            onClose={() => setShowEventModal(false)}
-            initialDate={selectedDate}
+            onClose={() => {
+              setShowEventModal(false);
+              setSelectedDate(null);
+            }}
+            selectedDate={selectedDate}
+            onSuccess={() => {
+              fetchEvents();
+              setShowEventModal(false);
+              setSelectedDate(null);
+            }}
           />
         )}
         <Toaster position="bottom-right" />
