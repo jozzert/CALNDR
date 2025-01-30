@@ -37,6 +37,11 @@ export function EventTypes() {
     fetchEventTypes();
   }, []);
 
+  const handleCategoryClick = (type: EventType) => {
+    setSelectedCategory(type);
+    setShowEditModal(true);
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -49,7 +54,8 @@ export function EventTypes() {
         {eventTypes.map((type) => (
           <div 
             key={type.id}
-            className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50"
+            onClick={() => handleCategoryClick(type)}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
           >
             <div className="flex items-center space-x-2">
               <div 
@@ -58,15 +64,7 @@ export function EventTypes() {
               />
               <span>{type.name}</span>
             </div>
-            <button
-              onClick={() => {
-                setSelectedCategory(type);
-                setShowEditModal(true);
-              }}
-              className="p-1 hover:bg-gray-100 rounded-full"
-            >
-              <Edit2 className="h-4 w-4 text-gray-500" />
-            </button>
+            <Edit2 className="h-4 w-4 text-gray-500" />
           </div>
         ))}
       </div>
