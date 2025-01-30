@@ -8,6 +8,7 @@ import { Event } from '../types';
 import { downloadCalendar } from '../utils/calendarExport';
 import { Menu, Dialog } from '@headlessui/react';
 import { Toaster, toast } from 'react-hot-toast';
+import { ErrorBoundary } from 'react-error-boundary';
 
 interface DayEvent {
   event: Event;
@@ -46,8 +47,13 @@ export default function Calendar() {
   const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 1 + i);
 
   useEffect(() => {
+    console.log('Fetching initial data...');
     Promise.all([fetchTeams(), fetchEventTypes()]).then(() => {
+      console.log('Teams and event types fetched, now fetching events...');
       fetchEvents();
+    }).catch(error => {
+      console.error('Error in initial data fetch:', error);
+      setError('Failed to load calendar data');
     });
   }, [currentDate, selectedTeam, selectedEventType]);
 
@@ -68,16 +74,27 @@ export default function Calendar() {
 
   async function fetchTeams() {
     try {
-      const { data: userTeams } = await supabase
+      console.log('Fetching teams...');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      const { data: userTeams, error } = await supabase
         .from('team_members')
         .select('teams (id, name)')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        .eq('user_id', user.id);
+
+      if (error) throw error;
 
       if (userTeams) {
-        setTeams(userTeams.map(ut => ut.teams).filter(Boolean));
+        const teams = userTeams.map(ut => ut.teams).filter(Boolean);
+        console.log('Teams fetched:', teams);
+        setTeams(teams);
       }
     } catch (error) {
       console.error('Error fetching teams:', error);
+      throw error;
     }
   }
 
@@ -289,312 +306,314 @@ export default function Calendar() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
-        <div className="flex items-center space-x-4">
-          <Menu as="div" className="relative">
-            <Menu.Button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              <Download className="h-4 w-4 mr-1.5" />
-              Export Calendar
-            </Menu.Button>
-            <Menu.Items className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-              <div className="py-1">
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleExportCalendar(false)}
-                      className={`${
-                        active ? 'bg-gray-100' : ''
-                      } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
-                    >
-                      Export All Events
-                    </button>
-                  )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={() => handleExportCalendar(true)}
-                      className={`${
-                        active ? 'bg-gray-100' : ''
-                      } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
-                    >
-                      Export New Events Only
-                    </button>
-                  )}
-                </Menu.Item>
-              </div>
-            </Menu.Items>
-          </Menu>
-          <Menu as="div" className="relative">
-            <Menu.Button className="rounded-full p-2 hover:bg-gray-100">
-              <DotsVertical className="h-5 w-5 text-gray-500" />
-            </Menu.Button>
-            <Menu.Items className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={handleToday}
-                    className={`${
-                      active ? 'bg-gray-100' : ''
-                    } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
-                  >
-                    Go to Today
-                  </button>
-                )}
-              </Menu.Item>
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={() => setShowEventForm(true)}
-                    className={`${
-                      active ? 'bg-gray-100' : ''
-                    } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
-                  >
-                    Create Event
-                  </button>
-                )}
-              </Menu.Item>
-            </Menu.Items>
-          </Menu>
-          <button
-            onClick={handleToday}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <CalendarIcon className="h-4 w-4 mr-1.5" />
-            Today
-          </button>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePreviousMonth}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            
+    <ErrorBoundary>
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
+          <div className="flex items-center space-x-4">
             <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center space-x-1 px-2 py-1 text-xl font-semibold hover:bg-gray-100 rounded-md">
-                <span>{format(currentDate, 'MMMM yyyy')}</span>
-                <ChevronRight className="h-4 w-4 rotate-90" />
+              <Menu.Button className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <Download className="h-4 w-4 mr-1.5" />
+                Export Calendar
               </Menu.Button>
-              <Menu.Items className="absolute z-10 mt-1 w-48 overflow-auto rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                <div className="px-3 py-2 border-b">
-                  <select 
-                    value={format(currentDate, 'yyyy')}
-                    onChange={(e) => {
-                      const newDate = setYear(currentDate, parseInt(e.target.value));
-                      setCurrentDate(startOfMonth(newDate));
-                    }}
-                    className="w-full rounded-md border-gray-300"
-                  >
-                    {years.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-3 gap-1 p-2">
-                  {months.map((month, index) => (
-                    <Menu.Item key={month}>
-                      {({ active }) => (
-                        <button
-                          onClick={() => handleMonthSelect(index)}
-                          className={`${
-                            active ? 'bg-gray-100' : ''
-                          } ${
-                            format(currentDate, 'MMMM') === month ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
-                          } px-2 py-1 text-sm rounded-md w-full text-center`}
-                        >
-                          {month.slice(0, 3)}
-                        </button>
-                      )}
-                    </Menu.Item>
-                  ))}
+              <Menu.Items className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                <div className="py-1">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => handleExportCalendar(false)}
+                        className={`${
+                          active ? 'bg-gray-100' : ''
+                        } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                      >
+                        Export All Events
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => handleExportCalendar(true)}
+                        className={`${
+                          active ? 'bg-gray-100' : ''
+                        } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                      >
+                        Export New Events Only
+                      </button>
+                    )}
+                  </Menu.Item>
                 </div>
               </Menu.Items>
             </Menu>
-
+            <Menu as="div" className="relative">
+              <Menu.Button className="rounded-full p-2 hover:bg-gray-100">
+                <DotsVertical className="h-5 w-5 text-gray-500" />
+              </Menu.Button>
+              <Menu.Items className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={handleToday}
+                      className={`${
+                        active ? 'bg-gray-100' : ''
+                      } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                    >
+                      Go to Today
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setShowEventForm(true)}
+                      className={`${
+                        active ? 'bg-gray-100' : ''
+                      } block px-4 py-2 text-sm text-gray-700 w-full text-left`}
+                    >
+                      Create Event
+                    </button>
+                  )}
+                </Menu.Item>
+              </Menu.Items>
+            </Menu>
             <button
-              onClick={handleNextMonth}
-              className="p-2 hover:bg-gray-100 rounded-full"
+              onClick={handleToday}
+              className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              <ChevronRight className="h-5 w-5" />
+              <CalendarIcon className="h-4 w-4 mr-1.5" />
+              Today
+            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handlePreviousMonth}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              
+              <Menu as="div" className="relative">
+                <Menu.Button className="flex items-center space-x-1 px-2 py-1 text-xl font-semibold hover:bg-gray-100 rounded-md">
+                  <span>{format(currentDate, 'MMMM yyyy')}</span>
+                  <ChevronRight className="h-4 w-4 rotate-90" />
+                </Menu.Button>
+                <Menu.Items className="absolute z-10 mt-1 w-48 overflow-auto rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="px-3 py-2 border-b">
+                    <select 
+                      value={format(currentDate, 'yyyy')}
+                      onChange={(e) => {
+                        const newDate = setYear(currentDate, parseInt(e.target.value));
+                        setCurrentDate(startOfMonth(newDate));
+                      }}
+                      className="w-full rounded-md border-gray-300"
+                    >
+                      {years.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 p-2">
+                    {months.map((month, index) => (
+                      <Menu.Item key={month}>
+                        {({ active }) => (
+                          <button
+                            onClick={() => handleMonthSelect(index)}
+                            className={`${
+                              active ? 'bg-gray-100' : ''
+                            } ${
+                              format(currentDate, 'MMMM') === month ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
+                            } px-2 py-1 text-sm rounded-md w-full text-center`}
+                          >
+                            {month.slice(0, 3)}
+                          </button>
+                        )}
+                      </Menu.Item>
+                    ))}
+                  </div>
+                </Menu.Items>
+              </Menu>
+
+              <button
+                onClick={handleNextMonth}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <EventFilters
+            teams={teams}
+            eventTypes={eventTypes}
+            selectedTeam={selectedTeam}
+            selectedEventType={selectedEventType}
+            onTeamChange={setSelectedTeam}
+            onEventTypeChange={setSelectedEventType}
+          />
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-red-50 p-4 mb-8">
+            <div className="text-sm text-red-700">{error}</div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="animate-pulse">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-4 bg-gray-200 rounded my-2 mx-1"></div>
+            ))}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <p>No events found for this period</p>
+            <button
+              onClick={() => setShowEventForm(true)}
+              className="mt-2 text-indigo-600 hover:text-indigo-500"
+            >
+              Create your first event
             </button>
           </div>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <EventFilters
-          teams={teams}
-          eventTypes={eventTypes}
-          selectedTeam={selectedTeam}
-          selectedEventType={selectedEventType}
-          onTeamChange={setSelectedTeam}
-          onEventTypeChange={setSelectedEventType}
-        />
-      </div>
-
-      {error && (
-        <div className="rounded-md bg-red-50 p-4 mb-8">
-          <div className="text-sm text-red-700">{error}</div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="animate-pulse">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-4 bg-gray-200 rounded my-2 mx-1"></div>
-          ))}
-        </div>
-      ) : events.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-          <p>No events found for this period</p>
-          <button
-            onClick={() => setShowEventForm(true)}
-            className="mt-2 text-indigo-600 hover:text-indigo-500"
-          >
-            Create your first event
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="calendar-grid grid grid-cols-1 sm:grid-cols-7 gap-px bg-gray-200">
-            {/* Weekday headers - hide on mobile */}
-            <div className="hidden sm:grid sm:grid-cols-7 sm:gap-px">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                <div key={day} className="bg-gray-50 py-2">
-                  <p className="text-sm font-medium text-gray-500 text-center">
-                    {day}
-                  </p>
-                </div>
-              ))}
-            </div>
-            
-            {/* Mobile view - show current week only by default */}
-            <div className="sm:hidden">
-              <select 
-                value={currentWeek} 
-                onChange={(e) => setCurrentWeek(e.target.value)}
-                className="block w-full rounded-md border-gray-300"
-              >
-                {weeks.map((week, i) => (
-                  <option key={i} value={i}>
-                    Week {i + 1} ({format(week.start, 'MMM d')} - {format(week.end, 'MMM d')})
-                  </option>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="calendar-grid grid grid-cols-1 sm:grid-cols-7 gap-px bg-gray-200">
+              {/* Weekday headers - hide on mobile */}
+              <div className="hidden sm:grid sm:grid-cols-7 sm:gap-px">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <div key={day} className="bg-gray-50 py-2">
+                    <p className="text-sm font-medium text-gray-500 text-center">
+                      {day}
+                    </p>
+                  </div>
                 ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-7 gap-px bg-gray-200">
-            {days.map((date) => {
-              const isCurrentMonth = isSameMonth(date, currentDate);
-              const isCurrentDate = isToday(date);
-              const isHovered = hoveredDate?.getTime() === date.getTime();
-              const dayEvents = getEventsForDay(date);
-
-              return (
-                <div
-                  key={date.toString()}
-                  className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
-                    ${!isCurrentMonth ? 'bg-gray-50' : ''}
-                    ${isCurrentDate ? 'bg-blue-50' : ''}
-                    ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
-                    hover:bg-indigo-50 hover:shadow-inner
-                    group relative
-                  `}
-                  onClick={() => {
-                    setSelectedDate(date);
-                    setSelectedEvent(null);
-                    setShowEventForm(true);
-                  }}
-                  onMouseEnter={() => setHoveredDate(date)}
-                  onMouseLeave={() => setHoveredDate(null)}
+              </div>
+              
+              {/* Mobile view - show current week only by default */}
+              <div className="sm:hidden">
+                <select 
+                  value={currentWeek} 
+                  onChange={(e) => setCurrentWeek(e.target.value)}
+                  className="block w-full rounded-md border-gray-300"
                 >
-                  <div className="px-2 py-1">
-                    <span
-                      className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
-                        ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
-                        ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
-                        ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
-                        group-hover:bg-indigo-100
-                        transition-colors duration-200
-                      `}
-                    >
-                      {format(date, 'd')}
-                    </span>
+                  {weeks.map((week, i) => (
+                    <option key={i} value={i}>
+                      Week {i + 1} ({format(week.start, 'MMM d')} - {format(week.end, 'MMM d')})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-px bg-gray-200">
+              {days.map((date) => {
+                const isCurrentMonth = isSameMonth(date, currentDate);
+                const isCurrentDate = isToday(date);
+                const isHovered = hoveredDate?.getTime() === date.getTime();
+                const dayEvents = getEventsForDay(date);
+
+                return (
+                  <div
+                    key={date.toString()}
+                    className={`min-h-32 bg-white transition-all duration-200 ease-in-out cursor-pointer
+                      ${!isCurrentMonth ? 'bg-gray-50' : ''}
+                      ${isCurrentDate ? 'bg-blue-50' : ''}
+                      ${isHovered ? 'bg-indigo-50 shadow-inner' : ''}
+                      hover:bg-indigo-50 hover:shadow-inner
+                      group relative
+                    `}
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setSelectedEvent(null);
+                      setShowEventForm(true);
+                    }}
+                    onMouseEnter={() => setHoveredDate(date)}
+                    onMouseLeave={() => setHoveredDate(null)}
+                  >
+                    <div className="px-2 py-1">
+                      <span
+                        className={`text-sm inline-flex items-center justify-center w-6 h-6 rounded-full
+                          ${!isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}
+                          ${isCurrentDate ? 'bg-blue-600 text-white' : ''}
+                          ${isHovered && !isCurrentDate ? 'bg-indigo-100' : ''}
+                          group-hover:bg-indigo-100
+                          transition-colors duration-200
+                        `}
+                      >
+                        {format(date, 'd')}
+                      </span>
+                    </div>
+                    <div className="px-1">
+                      {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
+                    </div>
                   </div>
-                  <div className="px-1">
-                    {dayEvents.map((dayEvent) => renderEventCell(dayEvent))}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {showEventForm && (
-        <EventForm
-          selectedDate={selectedDate || new Date()}
-          event={selectedEvent || undefined}
-          onClose={() => {
-            setShowEventForm(false);
-            setSelectedDate(null);
-            setSelectedEvent(null);
-          }}
-          onSuccess={() => {
-            fetchEvents();
-            setShowEventForm(false);
-            setSelectedDate(null);
-            setSelectedEvent(null);
-          }}
-        />
-      )}
+        {showEventForm && (
+          <EventForm
+            selectedDate={selectedDate || new Date()}
+            event={selectedEvent || undefined}
+            onClose={() => {
+              setShowEventForm(false);
+              setSelectedDate(null);
+              setSelectedEvent(null);
+            }}
+            onSuccess={() => {
+              fetchEvents();
+              setShowEventForm(false);
+              setSelectedDate(null);
+              setSelectedEvent(null);
+            }}
+          />
+        )}
 
-      {/* Add Warning Dialog */}
-      <Dialog
-        open={showDuplicateWarning}
-        onClose={() => setShowDuplicateWarning(false)}
-        className="relative z-50"
-      >
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="mx-auto max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-6 w-6 text-yellow-500" />
-              <Dialog.Title className="text-lg font-medium text-gray-900">
-                Duplicate Events Warning
-              </Dialog.Title>
-            </div>
+        {/* Add Warning Dialog */}
+        <Dialog
+          open={showDuplicateWarning}
+          onClose={() => setShowDuplicateWarning(false)}
+          className="relative z-50"
+        >
+          <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <Dialog.Panel className="mx-auto max-w-sm rounded-lg bg-white p-6 shadow-xl">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="h-6 w-6 text-yellow-500" />
+                <Dialog.Title className="text-lg font-medium text-gray-900">
+                  Duplicate Events Warning
+                </Dialog.Title>
+              </div>
 
-            <Dialog.Description className="mt-3 text-sm text-gray-500">
-              You have previously downloaded all events. Downloading again may create duplicates in your calendar. 
-              Consider using "Export New Events Only" instead.
-            </Dialog.Description>
+              <Dialog.Description className="mt-3 text-sm text-gray-500">
+                You have previously downloaded all events. Downloading again may create duplicates in your calendar. 
+                Consider using "Export New Events Only" instead.
+              </Dialog.Description>
 
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                type="button"
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                onClick={() => setShowDuplicateWarning(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                onClick={handleConfirmedExport}
-              >
-                Download Anyway
-              </button>
-            </div>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-      <Toaster position="bottom-right" />
-    </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  onClick={() => setShowDuplicateWarning(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  onClick={handleConfirmedExport}
+                >
+                  Download Anyway
+                </button>
+              </div>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
+        <Toaster position="bottom-right" />
+      </div>
+    </ErrorBoundary>
   );
 }
