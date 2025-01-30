@@ -9,6 +9,7 @@ import { downloadCalendar } from '../utils/calendarExport';
 import { Menu, Dialog } from '@headlessui/react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ErrorBoundary } from 'react-error-boundary';
+import { eventColors } from '../utils/eventColors';
 
 interface DayEvent {
   event: Event;
@@ -550,14 +551,21 @@ export default function Calendar() {
                       {dayEvents.map((event) => (
                         <div
                           key={event.id}
-                          className={`
-                            px-2 py-1 rounded-sm text-sm
-                            ${event.event_type.color ? `bg-${event.event_type.color}-100 text-${event.event_type.color}-800` : 'bg-blue-100 text-blue-800'}
-                          `}
+                          style={{
+                            backgroundColor: eventColors.getEventBackground(event.event_type.color),
+                            color: eventColors.getEventTextColor(event.event_type.color),
+                            borderLeft: `4px solid ${event.event_type.color}`
+                          }}
+                          className="px-2 py-1 rounded-sm text-sm"
                         >
                           <div className="font-medium truncate">{event.title}</div>
                           {!event.is_all_day && (
-                            <div className="text-xs text-gray-600">
+                            <div 
+                              className="text-xs opacity-75"
+                              style={{
+                                color: eventColors.getEventTextColor(event.event_type.color)
+                              }}
+                            >
                               {format(parseISO(event.start_time), 'h:mm a')}
                             </div>
                           )}
