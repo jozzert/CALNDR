@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
 import { Event } from '../types';
+import { downloadCalendar } from '../utils/calendarExport';
 
 interface DayEvent {
   event: Event;
@@ -226,6 +227,12 @@ export default function Calendar() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Team Calendar</h1>
         <div className="flex items-center space-x-4">
+          <button
+            onClick={() => downloadCalendar(events)}
+            className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Export Calendar
+          </button>
           <button
             onClick={handleToday}
             className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

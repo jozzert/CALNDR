@@ -11,8 +11,8 @@ export function generateICalendarFile(events: Event[]): string {
 
   events.forEach(event => {
     // Convert event dates to UTC format for iCalendar
-    const startDate = new Date(event.startDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const endDate = new Date(event.endDate).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const startDate = new Date(event.start_time).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endDate = new Date(event.end_time).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
     icsContent.push(
       'BEGIN:VEVENT',
