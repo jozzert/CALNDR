@@ -1,5 +1,4 @@
-import React from 'react';
-import { Popover } from '@headlessui/react';
+import React, { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Event } from '../types';
 
@@ -9,18 +8,27 @@ interface EventTooltipProps {
 }
 
 export function EventTooltip({ event, children }: EventTooltipProps) {
-  return (
-    <Popover className="relative">
-      <Popover.Button as="div" className="w-full">
-        {children}
-      </Popover.Button>
+  const [isHovered, setIsHovered] = useState(false);
 
-      <Popover.Panel className="absolute z-50 w-64 p-4 bg-white rounded-lg shadow-lg border border-gray-200 text-sm"
+  return (
+    <div 
+      className="relative group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {children}
+
+      <div 
+        className={`
+          absolute z-50 w-64 p-4 bg-white rounded-lg shadow-lg border border-gray-200 text-sm
+          transition-opacity duration-200 ease-in-out
+          ${isHovered ? 'opacity-100 visible' : 'opacity-0 invisible'}
+        `}
         style={{
-          bottom: '100%',
+          bottom: 'calc(100% + 8px)',
           left: '50%',
           transform: 'translateX(-50%)',
-          marginBottom: '8px'
+          pointerEvents: isHovered ? 'auto' : 'none'
         }}
       >
         <div className="space-y-2">
@@ -72,7 +80,7 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
             marginLeft: '-6px'
           }}
         />
-      </Popover.Panel>
-    </Popover>
+      </div>
+    </div>
   );
 } 
