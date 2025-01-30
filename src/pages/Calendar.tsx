@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isSameMonth, isToday, isWithinInterval, isSameDay, addMonths, subMonths, setMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
@@ -34,6 +34,11 @@ export default function Calendar() {
   const startDate = startOfWeek(firstDayOfMonth);
   const endDate = endOfWeek(lastDayOfMonth);
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   useEffect(() => {
     Promise.all([fetchTeams(), fetchEventTypes()]).then(() => {
@@ -215,6 +220,11 @@ export default function Calendar() {
     setCurrentDate(startOfMonth(new Date()));
   };
 
+  const handleMonthSelect = (monthIndex: number) => {
+    const newDate = setMonth(currentDate, monthIndex);
+    setCurrentDate(startOfMonth(newDate));
+  };
+
   const handleExportCalendar = async (newEventsOnly: boolean) => {
     try {
       await downloadCalendar(events, {
@@ -292,9 +302,32 @@ export default function Calendar() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <h2 className="text-xl font-semibold">
-              {format(currentDate, 'MMMM yyyy')}
-            </h2>
+            
+            <Menu as="div" className="relative">
+              <Menu.Button className="flex items-center space-x-1 px-2 py-1 text-xl font-semibold hover:bg-gray-100 rounded-md">
+                <span>{format(currentDate, 'MMMM yyyy')}</span>
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </Menu.Button>
+              <Menu.Items className="absolute z-10 mt-1 max-h-60 w-36 overflow-auto rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                {months.map((month, index) => (
+                  <Menu.Item key={month}>
+                    {({ active }) => (
+                      <button
+                        onClick={() => handleMonthSelect(index)}
+                        className={`${
+                          active ? 'bg-gray-100' : ''
+                        } ${
+                          format(currentDate, 'MMMM') === month ? 'bg-indigo-50 text-indigo-600' : 'text-gray-700'
+                        } block w-full px-4 py-2 text-left text-sm`}
+                      >
+                        {month}
+                      </button>
+                    )}
+                  </Menu.Item>
+                ))}
+              </Menu.Items>
+            </Menu>
+
             <button
               onClick={handleNextMonth}
               className="p-2 hover:bg-gray-100 rounded-full"
