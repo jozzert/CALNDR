@@ -8,27 +8,21 @@ interface EventTooltipProps {
 }
 
 export function EventTooltip({ event, children }: EventTooltipProps) {
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <div 
-      className="relative group"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="relative group">
       {children}
 
       <div 
-        className={`
+        className="
           absolute z-50 w-64 p-4 bg-white rounded-lg shadow-lg border border-gray-200 text-sm
-          transition-opacity duration-200 ease-in-out
-          ${isHovered ? 'opacity-100 visible' : 'opacity-0 invisible'}
-        `}
+          opacity-0 invisible group-hover:opacity-100 group-hover:visible
+          transition-all duration-200 ease-in-out
+          pointer-events-none
+        "
         style={{
           bottom: 'calc(100% + 8px)',
           left: '50%',
-          transform: 'translateX(-50%)',
-          pointerEvents: isHovered ? 'auto' : 'none'
+          transform: 'translateX(-50%)'
         }}
       >
         <div className="space-y-2">

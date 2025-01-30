@@ -485,6 +485,7 @@ export default function Calendar() {
                           onClick={(e) => handleEventClick(event, e)}
                           className="
                             event-item
+                            relative
                             px-2 py-1 
                             rounded-md 
                             text-sm 
@@ -494,7 +495,6 @@ export default function Calendar() {
                             cursor-pointer
                             mb-1
                             w-full
-                            hover:bg-opacity-90
                           "
                           style={{
                             backgroundColor: eventColors.getEventBackground(event.event_type.color),
