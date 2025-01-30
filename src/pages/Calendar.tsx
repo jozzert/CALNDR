@@ -495,7 +495,7 @@ export default function Calendar() {
                         "
                         style={{
                           backgroundColor: eventColors.getEventBackground(event.event_type.color),
-                          color: eventColors.getEventTextColor(event.event_type.color),
+                          color: event.event_type.color,
                           borderLeft: `4px solid ${event.event_type.color}`
                         }}
                       >
@@ -504,7 +504,7 @@ export default function Calendar() {
                           <div 
                             className="text-xs opacity-75"
                             style={{
-                              color: eventColors.getEventTextColor(event.event_type.color)
+                              color: event.event_type.color
                             }}
                           >
                             {format(parseISO(event.start_time), 'h:mm a')}
