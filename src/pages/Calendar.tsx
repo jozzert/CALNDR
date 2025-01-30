@@ -13,6 +13,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { ErrorBoundary } from 'react-error-boundary';
 import { eventColors } from '../utils/eventColors';
 import { enGB } from 'date-fns/locale';
+import { EventTooltip } from '../components/EventTooltip';
 
 interface DayEvent {
   event: Event;
@@ -479,39 +480,40 @@ export default function Calendar() {
 
                   <div className="flex-1 overflow-y-auto mt-1 space-y-1">
                     {dayEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        onClick={(e) => handleEventClick(event, e)}
-                        className="
-                          event-item
-                          px-2 py-1 
-                          rounded-md 
-                          text-sm 
-                          shadow-sm
-                          hover:shadow
-                          transition-all
-                          cursor-pointer
-                          mb-1
-                          w-full
-                        "
-                        style={{
-                          backgroundColor: eventColors.getEventBackground(event.event_type.color),
-                          color: event.event_type.color,
-                          borderLeft: `4px solid ${event.event_type.color}`
-                        }}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        {!event.is_all_day && (
-                          <div 
-                            className="text-xs opacity-75"
-                            style={{
-                              color: event.event_type.color
-                            }}
-                          >
-                            {format(parseISO(event.start_time), 'h:mm a')}
-                          </div>
-                        )}
-                      </div>
+                      <EventTooltip key={event.id} event={event}>
+                        <div
+                          onClick={(e) => handleEventClick(event, e)}
+                          className="
+                            event-item
+                            px-2 py-1 
+                            rounded-md 
+                            text-sm 
+                            shadow-sm
+                            hover:shadow
+                            transition-all
+                            cursor-pointer
+                            mb-1
+                            w-full
+                          "
+                          style={{
+                            backgroundColor: eventColors.getEventBackground(event.event_type.color),
+                            color: event.event_type.color,
+                            borderLeft: `4px solid ${event.event_type.color}`
+                          }}
+                        >
+                          <div className="font-medium truncate">{event.title}</div>
+                          {!event.is_all_day && (
+                            <div 
+                              className="text-xs opacity-75"
+                              style={{
+                                color: event.event_type.color
+                              }}
+                            >
+                              {format(parseISO(event.start_time), 'h:mm a')}
+                            </div>
+                          )}
+                        </div>
+                      </EventTooltip>
                     ))}
                   </div>
                 </div>
