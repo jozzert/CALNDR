@@ -198,7 +198,7 @@ export default function Calendar() {
     e.stopPropagation();
     setSelectedEvent(event);
     setSelectedDate(parseISO(event.start_time));
-    setShowEventModal(true);
+    setShowEventForm(true);
   };
 
   const handleDayClick = (date: Date, e: React.MouseEvent) => {
@@ -208,7 +208,7 @@ export default function Calendar() {
     
     setSelectedDate(date);
     setSelectedEvent(null);
-    setShowEventModal(true);
+    setShowEventForm(true);
   };
 
   const handlePreviousMonth = () => setCurrentDate(subMonths(currentDate, 1));
@@ -259,7 +259,7 @@ export default function Calendar() {
   };
 
   const handleModalClose = () => {
-    setShowEventModal(false);
+    setShowEventForm(false);
     setSelectedEvent(null);
     setSelectedDate(null);
   };
@@ -478,66 +478,39 @@ export default function Calendar() {
 
                   <div className="flex-1 overflow-y-auto mt-1 space-y-1">
                     {dayEvents.map((event) => (
-                      <Tooltip key={event.id}>
-                        <Tooltip.Button>
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEventClick(event, e);
-                            }}
+                      <div
+                        key={event.id}
+                        onClick={(e) => handleEventClick(event, e)}
+                        className="
+                          event-item
+                          px-2 py-1 
+                          rounded-md 
+                          text-sm 
+                          shadow-sm
+                          hover:shadow
+                          transition-all
+                          cursor-pointer
+                          mb-1
+                          w-full
+                        "
+                        style={{
+                          backgroundColor: eventColors.getEventBackground(event.event_type.color),
+                          color: eventColors.getEventTextColor(event.event_type.color),
+                          borderLeft: `4px solid ${event.event_type.color}`
+                        }}
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        {!event.is_all_day && (
+                          <div 
+                            className="text-xs opacity-75"
                             style={{
-                              backgroundColor: eventColors.getEventBackground(event.event_type.color),
-                              color: eventColors.getEventTextColor(event.event_type.color),
-                              borderLeft: `4px solid ${event.event_type.color}`
+                              color: eventColors.getEventTextColor(event.event_type.color)
                             }}
-                            className="
-                              px-2 py-1 
-                              rounded-md 
-                              text-sm 
-                              shadow-sm
-                              hover:shadow
-                              transition-all
-                              cursor-pointer
-                              mb-1
-                              w-full
-                              hover:translate-x-0.5
-                              hover:scale-[1.01]
-                            "
                           >
-                            <div className="font-medium truncate">{event.title}</div>
-                            {!event.is_all_day && (
-                              <div 
-                                className="text-xs opacity-75"
-                                style={{
-                                  color: eventColors.getEventTextColor(event.event_type.color)
-                                }}
-                              >
-                                {format(parseISO(event.start_time), 'h:mm a')}
-                              </div>
-                            )}
+                            {format(parseISO(event.start_time), 'h:mm a')}
                           </div>
-                        </Tooltip.Button>
-                        <Tooltip.Panel>
-                          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-[200px]">
-                            <div className="space-y-2">
-                              <div className="font-medium">{event.title}</div>
-                              {event.description && (
-                                <div className="text-sm text-gray-600">{event.description}</div>
-                              )}
-                              <div className="text-sm text-gray-500">
-                                {format(parseISO(event.start_time), 'MMM d, h:mm a')}
-                                {' - '}
-                                {format(parseISO(event.end_time), 'h:mm a')}
-                              </div>
-                              {event.location && (
-                                <div className="text-sm text-gray-500 flex items-center">
-                                  <span className="mr-1">📍</span> {event.location}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </Tooltip.Panel>
-                      </Tooltip>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -546,23 +519,32 @@ export default function Calendar() {
           </div>
         </div>
 
-        {showEventForm && (
-          <EventForm
-            selectedDate={selectedDate || new Date()}
-            event={selectedEvent || undefined}
-            onClose={() => {
-              setShowEventForm(false);
-              setSelectedDate(null);
-              setSelectedEvent(null);
-            }}
-            onSuccess={() => {
-              fetchEvents();
-              setShowEventForm(false);
-              setSelectedDate(null);
-              setSelectedEvent(null);
-            }}
-          />
-        )}
+        <Dialog
+          open={showEventForm}
+          onClose={handleModalClose}
+          className="relative z-50"
+        >
+          <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+          
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <Dialog.Panel className="mx-auto max-w-xl w-full bg-white rounded-xl shadow-lg">
+              <div className="p-6">
+                <Dialog.Title className="text-lg font-medium mb-4">
+                  {selectedEvent ? 'Edit Event' : 'Create Event'}
+                </Dialog.Title>
+                <EventForm
+                  event={selectedEvent}
+                  selectedDate={selectedDate}
+                  onClose={handleModalClose}
+                  onSuccess={() => {
+                    handleModalClose();
+                    fetchEvents();
+                  }}
+                />
+              </div>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
 
         <Dialog
           open={showDuplicateWarning}
@@ -605,16 +587,6 @@ export default function Calendar() {
           </div>
         </Dialog>
 
-        <EventModal
-          isOpen={showEventModal}
-          onClose={handleModalClose}
-          selectedDate={selectedDate}
-          event={selectedEvent}
-          onSuccess={() => {
-            handleModalClose();
-            fetchEvents();
-          }}
-        />
         <Toaster position="bottom-right" />
       </div>
     </ErrorBoundary>
