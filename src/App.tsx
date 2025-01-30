@@ -28,11 +28,11 @@ function App() {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    console.log('App mounting...');
+    console.log('=== App Initialization Start ===');
     async function init() {
       try {
-        console.log('Checking auth session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('1. Checking auth session...');
+        const { data, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
           console.error('Auth error:', sessionError);
@@ -40,18 +40,25 @@ function App() {
           return;
         }
 
-        console.log('Session status:', session ? 'authenticated' : 'no session');
+        console.log('2. Session data:', {
+          hasSession: !!data.session,
+          userId: data.session?.user?.id
+        });
+        
         setInitialized(true);
       } catch (error) {
-        console.error('Initialization error:', error);
+        console.error('3. Initialization error:', error);
         setError(error instanceof Error ? error.message : 'Unknown error occurred');
       } finally {
+        console.log('4. Setting loading to false');
         setIsLoading(false);
       }
     }
 
     init();
   }, []);
+
+  console.log('5. App render state:', { isLoading, error, initialized });
 
   if (isLoading) {
     return (

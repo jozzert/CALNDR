@@ -27,7 +27,7 @@ function ErrorFallback({error}: {error: Error}) {
 }
 
 export default function Calendar() {
-  console.log('Calendar component rendering...');
+  console.log('=== Calendar Component Start ===');
 
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [events, setEvents] = useState<Event[]>([]);
@@ -58,19 +58,19 @@ export default function Calendar() {
   const years = Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - 1 + i);
 
   useEffect(() => {
-    console.log('Calendar mounting...');
+    console.log('1. Calendar mounting...');
     return () => {
       console.log('Calendar unmounting...');
     };
   }, []);
 
   useEffect(() => {
-    console.log('Fetching initial data...');
+    console.log('2. Fetching initial data...');
     Promise.all([fetchTeams(), fetchEventTypes()]).then(() => {
-      console.log('Teams and event types fetched, now fetching events...');
+      console.log('3. Teams and event types fetched, now fetching events...');
       fetchEvents();
     }).catch(error => {
-      console.error('Error in initial data fetch:', error);
+      console.error('4. Error in initial data fetch:', error);
       setError('Failed to load calendar data');
     });
   }, [currentDate, selectedTeam, selectedEventType]);
@@ -91,9 +91,10 @@ export default function Calendar() {
   }, []);
 
   async function fetchTeams() {
+    console.log('5. Fetching teams...');
     try {
-      console.log('Fetching teams...');
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('6. Current user:', user?.id);
       if (!user) {
         throw new Error('No authenticated user');
       }
@@ -111,7 +112,7 @@ export default function Calendar() {
         setTeams(teams);
       }
     } catch (error) {
-      console.error('Error fetching teams:', error);
+      console.error('7. Error fetching teams:', error);
       throw error;
     }
   }
