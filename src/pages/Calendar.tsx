@@ -4,25 +4,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-reac
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
 import EventFilters from '../components/EventFilters';
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  start_time: string;
-  end_time: string;
-  is_all_day: boolean;
-  location: string;
-  event_type: {
-    id: string;
-    name: string;
-    color: string;
-  };
-  team: {
-    id: string;
-    name: string;
-  };
-}
+import { Event } from '../types';
 
 interface DayEvent {
   event: Event;
