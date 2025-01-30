@@ -198,7 +198,7 @@ export default function Calendar() {
     e.stopPropagation();
     setSelectedEvent(event);
     setSelectedDate(parseISO(event.start_time));
-    setShowEventForm(true);
+    setShowEventModal(true);
   };
 
   const handleDayClick = (date: Date, e: React.MouseEvent) => {
@@ -207,6 +207,7 @@ export default function Calendar() {
     }
     
     setSelectedDate(date);
+    setSelectedEvent(null);
     setShowEventModal(true);
   };
 
@@ -255,6 +256,12 @@ export default function Calendar() {
     } catch (error) {
       setError('Failed to export calendar');
     }
+  };
+
+  const handleModalClose = () => {
+    setShowEventModal(false);
+    setSelectedEvent(null);
+    setSelectedDate(null);
   };
 
   if (loading) {
@@ -598,21 +605,16 @@ export default function Calendar() {
           </div>
         </Dialog>
 
-        {showEventModal && (
-          <EventModal
-            isOpen={showEventModal}
-            onClose={() => {
-              setShowEventModal(false);
-              setSelectedDate(null);
-            }}
-            selectedDate={selectedDate}
-            onSuccess={() => {
-              fetchEvents();
-              setShowEventModal(false);
-              setSelectedDate(null);
-            }}
-          />
-        )}
+        <EventModal
+          isOpen={showEventModal}
+          onClose={handleModalClose}
+          selectedDate={selectedDate}
+          event={selectedEvent}
+          onSuccess={() => {
+            handleModalClose();
+            fetchEvents();
+          }}
+        />
         <Toaster position="bottom-right" />
       </div>
     </ErrorBoundary>
