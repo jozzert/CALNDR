@@ -12,6 +12,7 @@ import { Tooltip } from '../components/Tooltip';
 import { Toaster, toast } from 'react-hot-toast';
 import { ErrorBoundary } from 'react-error-boundary';
 import { eventColors } from '../utils/eventColors';
+import { enGB } from 'date-fns/locale';
 
 interface DayEvent {
   event: Event;
@@ -51,8 +52,8 @@ export default function Calendar() {
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart);
-  const calendarEnd = endOfWeek(monthEnd);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
@@ -428,7 +429,7 @@ export default function Calendar() {
 
         <div className="flex-1 bg-white rounded-lg shadow">
           <div className="grid grid-cols-7 gap-px border-b border-gray-200">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
               <div
                 key={day}
                 className="h-12 flex items-center justify-center bg-gray-50 px-2 py-2"
