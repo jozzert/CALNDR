@@ -495,7 +495,6 @@ export default function Calendar() {
                             cursor-pointer
                             mb-1
                             w-full
-                            hover:z-50
                           "
                           style={{
                             backgroundColor: eventColors.getEventBackground(event.event_type.color),
@@ -503,7 +502,11 @@ export default function Calendar() {
                             borderLeft: `4px solid ${event.event_type.color}`
                           }}
                         >
-                          <div className="font-medium truncate">{event.title}</div>
+                          <div className="font-medium truncate">
+                            <span className="mr-1">{event.title}</span>
+                            <span className="text-xs opacity-75">• {event.event_type.name}</span>
+                          </div>
+
                           {!event.is_all_day && (
                             <div 
                               className="text-xs opacity-75"
