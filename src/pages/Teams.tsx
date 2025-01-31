@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import TeamForm from '../components/TeamForm';
 import TeamMemberList from '../components/TeamMemberList';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface Team {
   id: string;
@@ -29,10 +29,20 @@ export default function Teams() {
     description: '',
   });
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     fetchTeams();
   }, []);
+
+  useEffect(() => {
+    // Check if we were navigated here with showNewTeamForm state
+    if (location.state?.showNewTeamForm) {
+      setShowNewTeamForm(true);
+      // Clear the state so refreshing doesn't reopen the form
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   async function fetchTeams() {
     try {

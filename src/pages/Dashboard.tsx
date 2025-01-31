@@ -166,7 +166,7 @@ export default function Dashboard() {
   };
 
   const handleNewTeam = () => {
-    navigate('/teams/new');
+    navigate('/teams', { state: { showNewTeamForm: true } });
   };
 
   const handleRefresh = () => {
