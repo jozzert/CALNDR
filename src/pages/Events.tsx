@@ -319,6 +319,7 @@ export default function Events() {
                         key={event.id}
                         className="p-6 cursor-pointer hover:bg-gray-50"
                         onClick={() => {
+                          // Don't modify the event dates when opening the modal
                           setSelectedEvent(event);
                           setShowEventForm(true);
                         }}
@@ -394,6 +395,7 @@ export default function Events() {
               key={event.id}
               className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => {
+                // Don't modify the event dates when opening the modal
                 setSelectedEvent(event);
                 setShowEventForm(true);
               }}
