@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { format, addDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import EventForm from '../components/EventForm';
+import { Event as FullEvent } from '../types';  // Import the complete Event type
+import { toast } from 'react-hot-toast';
 
 interface DashboardStats {
   totalEvents: number;
@@ -16,11 +18,9 @@ interface DashboardStats {
   };
 }
 
-interface Event {
-  id: string;
-  title: string;
-  start_time: string;
+interface Event extends Pick<FullEvent, 'id' | 'title' | 'start_time' | 'team' | 'description' | 'end_time' | 'is_all_day' | 'event_type' | 'location'> {
   team: {
+    id: string;
     name: string;
   };
 }
@@ -166,7 +166,7 @@ export default function Dashboard() {
   };
 
   const handleNewTeam = () => {
-    navigate('/teams/new');
+    navigate('/teams/new', { replace: false });  // Don't replace current history entry
   };
 
   const handleRefresh = () => {
@@ -262,9 +262,27 @@ export default function Dashboard() {
                     <li 
                       key={event.id} 
                       className="py-4 hover:bg-gray-50 cursor-pointer transition-colors rounded-md px-2"
-                      onClick={() => {
-                        setSelectedEvent(event);
-                        setShowEventForm(true);
+                      onClick={async () => {
+                        try {
+                          // Fetch full event data before opening the form
+                          const { data: fullEvent } = await supabase
+                            .from('events')
+                            .select(`
+                              *,
+                              team:teams (id, name),
+                              event_type:event_types (id, name, color)
+                            `)
+                            .eq('id', event.id)
+                            .single();
+
+                          if (fullEvent) {
+                            setSelectedEvent(fullEvent);
+                            setShowEventForm(true);
+                          }
+                        } catch (error) {
+                          console.error('Error fetching event details:', error);
+                          toast.error('Failed to load event details');
+                        }
                       }}
                     >
                       <div className="flex items-center space-x-4">
@@ -320,10 +338,15 @@ export default function Dashboard() {
       {/* Add Event Form Modal */}
       {showEventForm && (
         <EventForm
-          selectedDate={new Date()}
-          onClose={() => setShowEventForm(false)}
+          selectedDate={selectedEvent ? new Date(selectedEvent.start_time) : new Date()}
+          event={selectedEvent || undefined}
+          onClose={() => {
+            setShowEventForm(false);
+            setSelectedEvent(null);
+          }}
           onSuccess={() => {
             setShowEventForm(false);
+            setSelectedEvent(null);
             fetchDashboardData(); // Refresh dashboard data
           }}
         />
