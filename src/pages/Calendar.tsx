@@ -198,7 +198,15 @@ export default function Calendar() {
 
   const handleEventClick = (event: Event, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedEvent(event);
+    
+    // Create a deep copy of the event to prevent any reference issues
+    const eventCopy = {
+      ...event,
+      start_time: event.start_time,
+      end_time: event.end_time,
+    };
+    
+    setSelectedEvent(eventCopy);
     setSelectedDate(parseISO(event.start_time));
     setShowEventForm(true);
   };

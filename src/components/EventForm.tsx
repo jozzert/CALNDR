@@ -121,25 +121,15 @@ export default function EventForm({ selectedDate, onClose, onSuccess, event }: E
     fetchData();
   }, []);
 
+  // Only adjust times for all-day events
   useEffect(() => {
     if (isAllDay) {
-      // Only adjust times when switching to all-day
       const startDate = startTime.split('T')[0];
-      const endDate = endTime.split('T')[0];
+      const endDate = endTime.split('T')[0]; // Use endTime's date instead of startTime's
       setStartTime(`${startDate}T00:00`);
       setEndTime(`${endDate}T23:59`);
     }
   }, [isAllDay]);
-
-  // New effect to sync end date with start date
-  useEffect(() => {
-    const startDate = startTime.split('T')[0];
-    const endTimeComponents = endTime.split('T');
-    if (endTimeComponents.length === 2) {
-      const endTimeOnly = endTimeComponents[1];
-      setEndTime(`${startDate}T${endTimeOnly}`);
-    }
-  }, [startTime]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
