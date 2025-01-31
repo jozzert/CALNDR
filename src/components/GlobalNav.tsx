@@ -1,4 +1,24 @@
-import { useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, CalendarDays, Calendar, Users, Settings } from 'lucide-react';
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const navigation: NavigationItem[] = [
+  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Calendar', href: '/calendar', icon: CalendarDays },
+  { name: 'Events', href: '/events', icon: Calendar },
+  { name: 'Teams', href: '/teams', icon: Users },
+  { name: 'Organization', href: '/organization', icon: Settings },
+];
+
+function classNames(...classes: string[]) {
+  return classes.filter(Boolean).join(' ');
+}
 
 export default function GlobalNav() {
   const location = useLocation();
@@ -8,6 +28,8 @@ export default function GlobalNav() {
     if (path === '/') {
       return location.pathname === '/';
     }
+    // Check if the current path starts with the nav item path
+    // This ensures /teams/new will highlight the Teams nav item
     return location.pathname.startsWith(path);
   };
 
@@ -15,6 +37,8 @@ export default function GlobalNav() {
     <nav className="space-y-1">
       {navigation.map((item) => {
         const isActive = isActivePath(item.href);
+        const Icon = item.icon;
+        
         return (
           <Link
             key={item.name}
@@ -26,7 +50,7 @@ export default function GlobalNav() {
               'group flex items-center px-2 py-2 text-sm font-medium rounded-md'
             )}
           >
-            <item.icon
+            <Icon
               className={classNames(
                 isActive
                   ? 'text-gray-500'
