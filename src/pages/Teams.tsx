@@ -98,21 +98,33 @@ export default function Teams() {
     setLoading(true);
 
     try {
-      const { data: team, error } = await supabase
+      // Get user's organization first
+      const { data: orgData } = await supabase
+        .from('team_members')
+        .select('teams(organisation_id)')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (!orgData?.teams?.organisation_id) {
+        throw new Error('Organization not found');
+      }
+
+      // Create the team
+      const { data: team, error: teamError } = await supabase
         .from('teams')
         .insert([
           {
             name: formData.name,
             description: formData.description,
-            organisation_id: (await supabase.auth.getUser()).data.user?.id, // You might need to adjust this based on your data structure
+            organisation_id: orgData.teams.organisation_id,
           },
         ])
         .select()
         .single();
 
-      if (error) throw error;
+      if (teamError) throw teamError;
 
-      // Add the current user as a team member
+      // Add the current user as a team member with admin role
       if (team) {
         const { error: memberError } = await supabase
           .from('team_members')
@@ -128,9 +140,8 @@ export default function Teams() {
       }
 
       toast.success('Team created successfully!');
-      navigate('/teams');
+      handleTeamSuccess(); // This will refresh the teams list and close the form
     } catch (error) {
-      console.error('Error creating team:', error);
       toast.error('Failed to create team');
     } finally {
       setLoading(false);
