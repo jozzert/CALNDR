@@ -104,6 +104,11 @@ export default function Dashboard() {
           totalEvents: allEvents?.length || 0,
           activeTeams: teams?.length || 0,
           upcomingEvents: upcomingEventsData?.length || 0,
+          trends: {
+            totalEvents: calculateTrend(allEvents?.length || 0),
+            activeTeams: calculateTrend(teams?.length || 0),
+            upcomingEvents: calculateTrend(upcomingEventsData?.length || 0),
+          },
         });
 
         setRecentEvents(recentEventsData || []);
@@ -154,9 +159,9 @@ export default function Dashboard() {
   }
 
   const statItems = [
-    { name: 'Total Events', value: stats.totalEvents.toString(), icon: CalendarClock },
-    { name: 'Active Teams', value: stats.activeTeams.toString(), icon: Users },
-    { name: 'Upcoming Events', value: stats.upcomingEvents.toString(), icon: CalendarDays },
+    { name: 'Total Events', key: 'totalEvents', value: stats.totalEvents.toString(), icon: CalendarClock },
+    { name: 'Active Teams', key: 'activeTeams', value: stats.activeTeams.toString(), icon: Users },
+    { name: 'Upcoming Events', key: 'upcomingEvents', value: stats.upcomingEvents.toString(), icon: CalendarDays },
   ];
 
   return (
@@ -179,7 +184,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {statItems.map((stat) => {
           const Icon = stat.icon;
-          const trend = stats.trends[stat.name as keyof typeof stats.trends];
+          const trend = stats.trends[stat.key as keyof typeof stats.trends];
           
           return (
             <div
