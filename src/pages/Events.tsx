@@ -390,70 +390,103 @@ export default function Events() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => (
-            <div
-              key={event.id}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => {
-                // Don't modify the event dates when opening the modal
-                setSelectedEvent(event);
-                setShowEventForm(true);
-              }}
-            >
+          {events.map((event) => {
+            const start = parseISO(event.start_time);
+            const end = parseISO(event.end_time);
+            const isMultiDay = !isSameDay(start, end);
+
+            return (
               <div
-                className="h-2 rounded-t-lg"
-                style={{ backgroundColor: event.event_type.color }}
-              />
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                    style={{
-                      backgroundColor: event.event_type.color + '20',
-                      color: event.event_type.color
-                    }}
-                  >
-                    {event.event_type.name}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {event.team.name}
-                  </span>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {event.title}
-                </h3>
-                <div className="text-sm text-gray-500 mb-2">
-                  {event.is_all_day ? (
-                    format(parseISO(event.start_time), 'MMM d, yyyy')
-                  ) : (
-                    <>
-                      {format(parseISO(event.start_time), 'MMM d, yyyy h:mm a')}
-                      <br />
-                      {format(parseISO(event.end_time), 'h:mm a')}
-                    </>
+                key={event.id}
+                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => {
+                  setSelectedEvent(event);
+                  setShowEventForm(true);
+                }}
+              >
+                <div
+                  className="h-2 rounded-t-lg"
+                  style={{ backgroundColor: event.event_type.color }}
+                />
+                <div className="p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: event.event_type.color + '20',
+                        color: event.event_type.color
+                      }}
+                    >
+                      {event.event_type.name}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {event.team.name}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {event.title}
+                  </h3>
+
+                  {/* Date/Time */}
+                  <div className="text-sm text-gray-500">
+                    {event.is_all_day ? (
+                      isMultiDay ? (
+                        <>
+                          All day from {format(start, 'MMM d')} to {format(end, 'MMM d, yyyy')}
+                        </>
+                      ) : (
+                        <>All day on {format(start, 'MMM d, yyyy')}</>
+                      )
+                    ) : (
+                      isMultiDay ? (
+                        <>
+                          {format(start, 'MMM d, h:mm a')}
+                          {' - '}
+                          {format(end, 'MMM d, h:mm a, yyyy')}
+                        </>
+                      ) : (
+                        <>
+                          {format(start, 'MMM d, yyyy')}
+                          <br />
+                          {format(start, 'h:mm a')} - {format(end, 'h:mm a')}
+                        </>
+                      )
+                    )}
+                  </div>
+
+                  {/* Location */}
+                  {event.location && (
+                    <div className="text-sm text-gray-500 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {event.location}
+                    </div>
                   )}
-                </div>
-                {event.location && (
-                  <div className="text-sm text-gray-500 mb-2">
-                    {event.location}
+
+                  {/* Description */}
+                  {event.description && (
+                    <p className="text-sm text-gray-500 line-clamp-2">
+                      {event.description}
+                    </p>
+                  )}
+
+                  {/* Response counts */}
+                  <div className="flex items-center justify-between text-sm text-gray-500 pt-2 border-t">
+                    <div className="flex items-center space-x-4">
+                      <span>{event.response_count.yes} confirmed</span>
+                      <span>{event.response_count.maybe} maybe</span>
+                    </div>
+                    <span>{event.response_count.no} declined</span>
                   </div>
-                )}
-                {event.description && (
-                  <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-                    {event.description}
-                  </p>
-                )}
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center space-x-2">
-                    <span>{event.response_count.yes} confirmed</span>
-                    <span>•</span>
-                    <span>{event.response_count.maybe} maybe</span>
-                  </div>
-                  <span>{event.response_count.no} declined</span>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
