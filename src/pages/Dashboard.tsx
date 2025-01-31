@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays, Users, CalendarClock, Plus } from 'lucide-react';
+import { CalendarDays, Users, CalendarClock, Plus, RefreshCw, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format, addDays } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import EventForm from '../components/EventForm';
 
 interface DashboardStats {
   totalEvents: number;
   activeTeams: number;
   upcomingEvents: number;
+  trends: {
+    totalEvents: number;
+    activeTeams: number;
+    upcomingEvents: number;
+  };
 }
 
 interface Event {
@@ -19,14 +26,24 @@ interface Event {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalEvents: 0,
     activeTeams: 0,
     upcomingEvents: 0,
+    trends: {
+      totalEvents: 0,
+      activeTeams: 0,
+      upcomingEvents: 0,
+    },
   });
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -101,6 +118,23 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
+  const handleNewEvent = async () => {
+    setActionLoading('event');
+    try {
+      setShowEventForm(true);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleNewTeam = () => {
+    navigate('/teams/new');
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -127,16 +161,26 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Welcome to your team calendar dashboard
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Welcome to your team calendar dashboard
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          className="p-2 text-gray-400 hover:text-gray-500 rounded-full hover:bg-gray-100"
+        >
+          <RefreshCw className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {statItems.map((stat) => {
           const Icon = stat.icon;
+          const trend = stats.trends[stat.name as keyof typeof stats.trends];
+          
           return (
             <div
               key={stat.name}
@@ -150,10 +194,15 @@ export default function Dashboard() {
                   {stat.name}
                 </p>
               </dt>
-              <dd className="ml-16 flex items-baseline">
+              <dd className="ml-16 flex items-baseline justify-between">
                 <p className="text-2xl font-semibold text-gray-900">
                   {stat.value}
                 </p>
+                {trend !== 0 && (
+                  <p className={`text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {trend > 0 ? '+' : ''}{trend}%
+                  </p>
+                )}
               </dd>
             </div>
           );
@@ -172,7 +221,14 @@ export default function Dashboard() {
               ) : (
                 <ul className="-my-5 divide-y divide-gray-200">
                   {recentEvents.map((event) => (
-                    <li key={event.id} className="py-4">
+                    <li 
+                      key={event.id} 
+                      className="py-4 hover:bg-gray-50 cursor-pointer transition-colors rounded-md px-2"
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        setShowEventForm(true);
+                      }}
+                    >
                       <div className="flex items-center space-x-4">
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-gray-900">
@@ -198,11 +254,22 @@ export default function Dashboard() {
             </h2>
             <div className="mt-6 flow-root">
               <div className="grid grid-cols-2 gap-4">
-                <button className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  <Plus className="h-5 w-5 mr-2" />
+                <button 
+                  onClick={handleNewEvent}
+                  disabled={actionLoading === 'event'}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  {actionLoading === 'event' ? (
+                    <Loader className="h-5 w-5 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-5 w-5 mr-2" />
+                  )}
                   New Event
                 </button>
-                <button className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <button 
+                  onClick={handleNewTeam}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
                   <Users className="h-5 w-5 mr-2" />
                   New Team
                 </button>
@@ -211,6 +278,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Add Event Form Modal */}
+      {showEventForm && (
+        <EventForm
+          selectedDate={new Date()}
+          onClose={() => setShowEventForm(false)}
+          onSuccess={() => {
+            setShowEventForm(false);
+            fetchDashboardData(); // Refresh dashboard data
+          }}
+        />
+      )}
     </div>
   );
 }
