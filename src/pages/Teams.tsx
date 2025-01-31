@@ -79,7 +79,8 @@ export default function Teams() {
 
       setTeams(teamsWithCount);
     } catch (error) {
-      console.error('Error fetching teams:', error);
+      // Only log critical errors that don't expose sensitive data
+      console.error('Failed to load teams');
       setError('Failed to load teams');
     } finally {
       setLoading(false);

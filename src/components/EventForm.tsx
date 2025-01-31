@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, parseISO, isBefore } from 'date-fns';
 import { X, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 interface Team {
   id: string;
@@ -113,7 +114,7 @@ export default function EventForm({ selectedDate, onClose, onSuccess, event }: E
           setEventTypeId(eventTypesData[0].id);
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        toast.error('Failed to load form data');
         setError('Failed to load form data');
       }
     }
@@ -184,8 +185,7 @@ export default function EventForm({ selectedDate, onClose, onSuccess, event }: E
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Error saving event:', error);
-      setError('Failed to save event. Please try again.');
+      toast.error('Failed to save event');
     } finally {
       setLoading(false);
     }
@@ -207,8 +207,7 @@ export default function EventForm({ selectedDate, onClose, onSuccess, event }: E
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Error deleting event:', error);
-      setError('Failed to delete event. Please try again.');
+      toast.error('Failed to delete event');
     } finally {
       setLoading(false);
       setShowDeleteConfirm(false);

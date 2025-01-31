@@ -146,7 +146,8 @@ export default function Dashboard() {
 
         setRecentEvents(recentEventsData || []);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        // Only log critical failures without exposing details
+        console.error('Failed to load dashboard data');
         setError('Failed to load dashboard data. Please try again later.');
       } finally {
         setLoading(false);
@@ -280,7 +281,7 @@ export default function Dashboard() {
                             setShowEventForm(true);
                           }
                         } catch (error) {
-                          console.error('Error fetching event details:', error);
+                          // Remove detailed error logging
                           toast.error('Failed to load event details');
                         }
                       }}
