@@ -1,6 +1,6 @@
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isSameDay } from 'date-fns';
 import { Event } from '../types';
 
 interface EventTooltipProps {
@@ -42,7 +42,11 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
             <>
               {format(parseISO(event.start_time), 'MMM d, h:mm a')}
               {' - '}
-              {format(parseISO(event.end_time), 'h:mm a')}
+              {isSameDay(parseISO(event.start_time), parseISO(event.end_time)) ? (
+                format(parseISO(event.end_time), 'h:mm a')
+              ) : (
+                format(parseISO(event.end_time), 'MMM d, h:mm a')
+              )}
             </>
           )}
         </div>

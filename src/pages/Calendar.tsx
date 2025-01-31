@@ -448,7 +448,7 @@ export default function Calendar() {
               const dayEvents = events.filter(event => {
                 const eventStart = parseISO(event.start_time);
                 const eventEnd = parseISO(event.end_time);
-                const currentDay = parseISO(formattedDate);
+                const currentDay = day;
                 
                 return isWithinInterval(currentDay, {
                   start: startOfDay(eventStart),
