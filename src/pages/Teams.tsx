@@ -99,48 +99,65 @@ export default function Teams() {
 
     try {
       // Get user's organization first
-      const { data: orgData } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      // First get any existing team membership to get org ID
+      const { data: teamMember } = await supabase
         .from('team_members')
         .select('teams(organisation_id)')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user.id)
         .single();
 
-      if (!orgData?.teams?.organisation_id) {
-        throw new Error('Organization not found');
+      // If user has no team, they might be an org admin
+      const orgId = teamMember?.teams?.organisation_id || user.id;
+
+      if (!orgId) {
+        throw new Error('No organization found');
       }
 
       // Create the team
-      const { data: team, error: teamError } = await supabase
+      const { data: newTeam, error: teamError } = await supabase
         .from('teams')
         .insert([
           {
             name: formData.name,
             description: formData.description,
-            organisation_id: orgData.teams.organisation_id,
+            organisation_id: orgId,
           },
         ])
         .select()
         .single();
 
-      if (teamError) throw teamError;
+      if (teamError) {
+        toast.error('Failed to create team');
+        return;
+      }
 
       // Add the current user as a team member with admin role
-      if (team) {
+      if (newTeam) {
         const { error: memberError } = await supabase
           .from('team_members')
           .insert([
             {
-              team_id: team.id,
-              user_id: (await supabase.auth.getUser()).data.user?.id,
+              team_id: newTeam.id,
+              user_id: user.id,
               role: 'admin',
             },
           ]);
 
-        if (memberError) throw memberError;
+        if (memberError) {
+          toast.error('Team created but failed to add you as member');
+          return;
+        }
       }
 
       toast.success('Team created successfully!');
-      handleTeamSuccess(); // This will refresh the teams list and close the form
+      setShowNewTeamForm(false);
+      fetchTeams();
+      navigate('/teams', { replace: true });
     } catch (error) {
       toast.error('Failed to create team');
     } finally {
@@ -228,7 +245,17 @@ export default function Teams() {
                       disabled={loading}
                       className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
-                      {loading ? 'Creating...' : 'Create Team'}
+                      {loading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Creating...
+                        </>
+                      ) : (
+                        'Create Team'
+                      )}
                     </button>
                   </div>
                 </div>
