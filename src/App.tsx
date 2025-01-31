@@ -76,6 +76,7 @@ function App() {
               <Route path="/calendar" element={<CalendarView />} />
               <Route path="/events" element={<Events />} />
               <Route path="/teams" element={<Teams />} />
+              <Route path="/teams/new" element={<Teams />} />
               <Route path="/organization" element={<OrganizationSettings />} />
             </Route>
           </Route>

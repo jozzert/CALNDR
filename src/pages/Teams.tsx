@@ -3,6 +3,8 @@ import { Users, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import TeamForm from '../components/TeamForm';
 import TeamMemberList from '../components/TeamMemberList';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Team {
   id: string;
@@ -11,12 +13,22 @@ interface Team {
   member_count?: number;
 }
 
+interface TeamFormData {
+  name: string;
+  description?: string;
+}
+
 export default function Teams() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewTeamForm, setShowNewTeamForm] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<TeamFormData>({
+    name: '',
+    description: '',
+  });
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTeams();
@@ -70,6 +82,50 @@ export default function Teams() {
     fetchTeams();
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data: team, error } = await supabase
+        .from('teams')
+        .insert([
+          {
+            name: formData.name,
+            description: formData.description,
+            organisation_id: (await supabase.auth.getUser()).data.user?.id, // You might need to adjust this based on your data structure
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add the current user as a team member
+      if (team) {
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .insert([
+            {
+              team_id: team.id,
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              role: 'admin',
+            },
+          ]);
+
+        if (memberError) throw memberError;
+      }
+
+      toast.success('Team created successfully!');
+      navigate('/teams');
+    } catch (error) {
+      console.error('Error creating team:', error);
+      toast.error('Failed to create team');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -103,12 +159,60 @@ export default function Teams() {
       )}
 
       {showNewTeamForm && (
-        <div className="bg-white shadow sm:rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Create New Team</h2>
-          <TeamForm
-            onSuccess={handleTeamSuccess}
-            onCancel={() => setShowNewTeamForm(false)}
-          />
+        <div className="max-w-2xl mx-auto py-8">
+          <div className="md:grid md:grid-cols-3 md:gap-6">
+            <div className="md:col-span-1">
+              <h3 className="text-lg font-medium leading-6 text-gray-900">Create New Team</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Create a new team to collaborate on events and calendars.
+              </p>
+            </div>
+            <div className="mt-5 md:mt-0 md:col-span-2">
+              <form onSubmit={handleSubmit}>
+                <div className="shadow sm:rounded-md sm:overflow-hidden">
+                  <div className="px-4 py-5 bg-white space-y-6 sm:p-6">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        Team Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        id="name"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                        Description
+                      </label>
+                      <textarea
+                        id="description"
+                        name="description"
+                        rows={3}
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      {loading ? 'Creating...' : 'Create Team'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 

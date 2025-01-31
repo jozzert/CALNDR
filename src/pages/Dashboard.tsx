@@ -166,7 +166,7 @@ export default function Dashboard() {
   };
 
   const handleNewTeam = () => {
-    navigate('/teams/new', { replace: false });  // Don't replace current history entry
+    navigate('/teams/new');
   };
 
   const handleRefresh = () => {
