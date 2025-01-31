@@ -6,19 +6,16 @@ import { Event } from '../types';
 interface EventTooltipProps {
   event: Event;
   children: React.ReactNode;
+  displayDate?: Date;
 }
 
-export function EventTooltip({ event, children, displayDate }: EventTooltipProps & { displayDate?: Date }) {
+export function EventTooltip({ event, children, displayDate }: EventTooltipProps) {
   const eventStart = parseISO(event.start_time);
   const eventEnd = parseISO(event.end_time);
   
-  // If we're viewing this event on a specific day (in calendar view),
-  // adjust the display of start/end times accordingly
-  const adjustedStart = displayDate && !isSameDay(displayDate, eventStart) ? 
-    startOfDay(displayDate) : eventStart;
-  const adjustedEnd = displayDate && !isSameDay(displayDate, eventEnd) ? 
-    endOfDay(displayDate) : eventEnd;
-
+  // For multi-day events, show the full date range
+  const isMultiDay = !isSameDay(eventStart, eventEnd);
+  
   const content = (
     <div className="p-3 max-w-sm bg-white rounded-lg shadow-lg">
       <div className="space-y-3">
@@ -49,7 +46,7 @@ export function EventTooltip({ event, children, displayDate }: EventTooltipProps
           {event.is_all_day ? (
             <>
               <span>All day</span>
-              {!isSameDay(eventStart, eventEnd) && (
+              {isMultiDay && (
                 <span className="ml-1 text-gray-500">
                   ({format(eventStart, 'MMM d')} - {format(eventEnd, 'MMM d')})
                 </span>
@@ -57,12 +54,21 @@ export function EventTooltip({ event, children, displayDate }: EventTooltipProps
             </>
           ) : (
             <>
-              {format(adjustedStart, 'MMM d, h:mm a')}
-              {' - '}
-              {isSameDay(adjustedStart, adjustedEnd) ? 
-                format(adjustedEnd, 'h:mm a') : 
-                format(adjustedEnd, 'MMM d, h:mm a')
-              }
+              {isMultiDay ? (
+                // For multi-day events, always show the full range
+                <>
+                  {format(eventStart, 'MMM d, h:mm a')}
+                  {' - '}
+                  {format(eventEnd, 'MMM d, h:mm a')}
+                </>
+              ) : (
+                // For single-day events, show just the times
+                <>
+                  {format(eventStart, 'h:mm a')}
+                  {' - '}
+                  {format(eventEnd, 'h:mm a')}
+                </>
+              )}
             </>
           )}
         </div>
