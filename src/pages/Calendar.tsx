@@ -480,7 +480,11 @@ export default function Calendar() {
 
                   <div className="flex-1 overflow-y-auto mt-1 space-y-1">
                     {dayEvents.map((event) => (
-                      <EventTooltip key={event.id} event={event}>
+                      <EventTooltip 
+                        key={event.id} 
+                        event={event}
+                        displayDate={day}
+                      >
                         <div
                           onClick={(e) => handleEventClick(event, e)}
                           className="

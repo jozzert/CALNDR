@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format, parseISO, isSameMonth } from 'date-fns';
+import { format, parseISO, isSameMonth, isSameDay } from 'date-fns';
 import { CalendarClock, Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm';
@@ -310,64 +310,78 @@ export default function Events() {
               
               {group.isExpanded && (
                 <div className="divide-y divide-gray-200">
-                  {group.events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="p-6 cursor-pointer hover:bg-gray-50"
-                      onClick={() => {
-                        setSelectedEvent(event);
-                        setShowEventForm(true);
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: event.event_type.color }}
-                          ></div>
-                          <div>
-                            <h3 className="text-lg font-medium text-gray-900">
-                              {event.title}
-                            </h3>
-                            <div className="mt-1 text-sm text-gray-500">
-                              <span className="font-medium">{event.team.name}</span>
-                              {event.location && (
-                                <>
-                                  <span className="mx-2">•</span>
-                                  <span>{event.location}</span>
-                                </>
-                              )}
+                  {group.events.map((event) => {
+                    const start = parseISO(event.start_time);
+                    const end = parseISO(event.end_time);
+                    
+                    return (
+                      <div
+                        key={event.id}
+                        className="p-6 cursor-pointer hover:bg-gray-50"
+                        onClick={() => {
+                          setSelectedEvent(event);
+                          setShowEventForm(true);
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: event.event_type.color }}
+                            ></div>
+                            <div>
+                              <h3 className="text-lg font-medium text-gray-900">
+                                {event.title}
+                              </h3>
+                              <div className="mt-1 text-sm text-gray-500">
+                                <span className="font-medium">{event.team.name}</span>
+                                {event.location && (
+                                  <>
+                                    <span className="mx-2">•</span>
+                                    <span>{event.location}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          <div className="text-sm text-gray-500">
+                            {event.is_all_day ? (
+                              <div className="text-sm text-gray-500">
+                                {isSameDay(start, end) ? (
+                                  <>All day on {format(start, 'MMM d, yyyy')}</>
+                                ) : (
+                                  <>All day from {format(start, 'MMM d')} to {format(end, 'MMM d, yyyy')}</>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500">
+                                {format(start, 'MMM d, h:mm a')}
+                                {' - '}
+                                {isSameDay(start, end) ? 
+                                  format(end, 'h:mm a') : 
+                                  format(end, 'MMM d, h:mm a, yyyy')
+                                }
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {event.is_all_day ? (
-                            format(parseISO(event.start_time), 'MMM d, yyyy')
-                          ) : (
-                            <>
-                              {format(parseISO(event.start_time), 'MMM d, yyyy h:mm a')}
-                              {' - '}
-                              {format(parseISO(event.end_time), 'h:mm a')}
-                            </>
-                          )}
+                        {event.description && (
+                          <p className="mt-2 text-sm text-gray-500">{event.description}</p>
+                        )}
+                        <div className="mt-4 flex items-center space-x-4 text-sm text-gray-500">
+                          <span>
+                            {event.response_count.yes} confirmed
+                          </span>
+                          <span>
+                            {event.response_count.maybe} maybe
+                          </span>
+                          <span>
+                            {event.response_count.no} declined
+                          </span>
                         </div>
                       </div>
-                      {event.description && (
-                        <p className="mt-2 text-sm text-gray-500">{event.description}</p>
-                      )}
-                      <div className="mt-4 flex items-center space-x-4 text-sm text-gray-500">
-                        <span>
-                          {event.response_count.yes} confirmed
-                        </span>
-                        <span>
-                          {event.response_count.maybe} maybe
-                        </span>
-                        <span>
-                          {event.response_count.no} declined
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

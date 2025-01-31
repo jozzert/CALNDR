@@ -1,6 +1,6 @@
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
-import { format, parseISO, isSameDay } from 'date-fns';
+import { format, parseISO, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { Event } from '../types';
 
 interface EventTooltipProps {
@@ -8,7 +8,17 @@ interface EventTooltipProps {
   children: React.ReactNode;
 }
 
-export function EventTooltip({ event, children }: EventTooltipProps) {
+export function EventTooltip({ event, children, displayDate }: EventTooltipProps & { displayDate?: Date }) {
+  const eventStart = parseISO(event.start_time);
+  const eventEnd = parseISO(event.end_time);
+  
+  // If we're viewing this event on a specific day (in calendar view),
+  // adjust the display of start/end times accordingly
+  const adjustedStart = displayDate && !isSameDay(displayDate, eventStart) ? 
+    startOfDay(displayDate) : eventStart;
+  const adjustedEnd = displayDate && !isSameDay(displayDate, eventEnd) ? 
+    endOfDay(displayDate) : eventEnd;
+
   const content = (
     <div className="p-3 max-w-sm bg-white rounded-lg shadow-lg">
       <div className="space-y-3">
@@ -37,16 +47,22 @@ export function EventTooltip({ event, children }: EventTooltipProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           {event.is_all_day ? (
-            <span>All day</span>
+            <>
+              <span>All day</span>
+              {!isSameDay(eventStart, eventEnd) && (
+                <span className="ml-1 text-gray-500">
+                  ({format(eventStart, 'MMM d')} - {format(eventEnd, 'MMM d')})
+                </span>
+              )}
+            </>
           ) : (
             <>
-              {format(parseISO(event.start_time), 'MMM d, h:mm a')}
+              {format(adjustedStart, 'MMM d, h:mm a')}
               {' - '}
-              {isSameDay(parseISO(event.start_time), parseISO(event.end_time)) ? (
-                format(parseISO(event.end_time), 'h:mm a')
-              ) : (
-                format(parseISO(event.end_time), 'MMM d, h:mm a')
-              )}
+              {isSameDay(adjustedStart, adjustedEnd) ? 
+                format(adjustedEnd, 'h:mm a') : 
+                format(adjustedEnd, 'MMM d, h:mm a')
+              }
             </>
           )}
         </div>
