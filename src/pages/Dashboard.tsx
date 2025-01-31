@@ -25,6 +25,19 @@ interface Event {
   };
 }
 
+interface HistoricalStats {
+  totalEvents: number;
+  activeTeams: number;
+  upcomingEvents: number;
+  timestamp: string;
+}
+
+function calculateTrend(currentValue: number, previousValue: number): number {
+  if (previousValue === 0) return 0;
+  const percentageChange = ((currentValue - previousValue) / previousValue) * 100;
+  return Math.round(percentageChange);
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
@@ -44,11 +57,13 @@ export default function Dashboard() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [historicalStats, setHistoricalStats] = useState<HistoricalStats | null>(null);
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
         const now = new Date().toISOString();
+        const lastWeek = addDays(new Date(), -7).toISOString();
         const nextWeek = addDays(new Date(), 7).toISOString();
 
         // Get user's teams first
@@ -65,12 +80,13 @@ export default function Dashboard() {
 
         const teamIds = userTeams.map(t => t.team_id);
 
-        // Then fetch data for those teams
+        // Fetch current and historical data
         const [
           { data: allEvents },
           { data: teams },
           { data: upcomingEventsData },
-          { data: recentEventsData }
+          { data: recentEventsData },
+          { data: historicalEvents }
         ] = await Promise.all([
           supabase
             .from('events')
@@ -97,17 +113,34 @@ export default function Dashboard() {
             .in('team_id', teamIds)
             .gte('start_time', now)
             .order('start_time')
-            .limit(5)
+            .limit(5),
+          // Historical data from last week
+          supabase
+            .from('events')
+            .select('id')
+            .in('team_id', teamIds)
+            .gte('start_time', lastWeek)
+            .lt('start_time', now)
         ]);
 
-        setStats({
+        const currentStats = {
           totalEvents: allEvents?.length || 0,
           activeTeams: teams?.length || 0,
           upcomingEvents: upcomingEventsData?.length || 0,
+        };
+
+        const previousStats = {
+          totalEvents: historicalEvents?.length || 0,
+          activeTeams: teams?.length || 0, // Teams don't change as frequently
+          upcomingEvents: historicalEvents?.length || 0,
+        };
+
+        setStats({
+          ...currentStats,
           trends: {
-            totalEvents: calculateTrend(allEvents?.length || 0),
-            activeTeams: calculateTrend(teams?.length || 0),
-            upcomingEvents: calculateTrend(upcomingEventsData?.length || 0),
+            totalEvents: calculateTrend(currentStats.totalEvents, previousStats.totalEvents),
+            activeTeams: calculateTrend(currentStats.activeTeams, previousStats.activeTeams),
+            upcomingEvents: calculateTrend(currentStats.upcomingEvents, previousStats.upcomingEvents),
           },
         });
 
@@ -121,7 +154,7 @@ export default function Dashboard() {
     }
 
     fetchDashboardData();
-  }, []);
+  }, [refreshKey]);
 
   const handleNewEvent = async () => {
     setActionLoading('event');
