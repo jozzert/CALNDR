@@ -101,21 +101,20 @@ export default function Teams() {
       // Get user's organization first
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        throw new Error('Not authenticated');
+        toast.error('Not authenticated');
+        return;
       }
 
-      // First get any existing team membership to get org ID
-      const { data: teamMember } = await supabase
-        .from('team_members')
-        .select('teams(organisation_id)')
-        .eq('user_id', user.id)
+      // Get organization ID from user's profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organisation_id')
+        .eq('id', user.id)
         .single();
 
-      // If user has no team, they might be an org admin
-      const orgId = teamMember?.teams?.organisation_id || user.id;
-
-      if (!orgId) {
-        throw new Error('No organization found');
+      if (profileError || !profile?.organisation_id) {
+        toast.error('Organization not found');
+        return;
       }
 
       // Create the team
@@ -125,7 +124,7 @@ export default function Teams() {
           {
             name: formData.name,
             description: formData.description,
-            organisation_id: orgId,
+            organisation_id: profile.organisation_id,
           },
         ])
         .select()
@@ -136,22 +135,25 @@ export default function Teams() {
         return;
       }
 
-      // Add the current user as a team member with admin role
-      if (newTeam) {
-        const { error: memberError } = await supabase
-          .from('team_members')
-          .insert([
-            {
-              team_id: newTeam.id,
-              user_id: user.id,
-              role: 'admin',
-            },
-          ]);
+      if (!newTeam) {
+        toast.error('Team creation failed');
+        return;
+      }
 
-        if (memberError) {
-          toast.error('Team created but failed to add you as member');
-          return;
-        }
+      // Add the current user as a team member with admin role
+      const { error: memberError } = await supabase
+        .from('team_members')
+        .insert([
+          {
+            team_id: newTeam.id,
+            user_id: user.id,
+            role: 'admin',
+          },
+        ]);
+
+      if (memberError) {
+        toast.error('Team created but failed to add you as member');
+        return;
       }
 
       toast.success('Team created successfully!');
